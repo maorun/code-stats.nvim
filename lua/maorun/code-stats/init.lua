@@ -77,14 +77,31 @@ local function pulseSend()
     end
 end
 
-vim.cmd [[
-    augroup codestats_track
-        autocmd!
-        autocmd InsertCharPre,TextChanged * lua require('maorun.code-stats').add(vim.bo.filetype)
-        autocmd VimLeavePre * lua require('maorun.code-stats').pulseSend()
-        autocmd BufWrite,BufLeave * lua require('maorun.code-stats').pulseSend()
-    augroup END
-]]
+local group = vim.api.nvim_create_augroup("codestats_track", { clear = true })
+
+vim.api.nvim_create_autocmd({ "InsertCharPre", "TextChanged" }, {
+  group = group,
+  pattern = "*",
+  callback = function()
+    require('maorun.code-stats').add(vim.bo.filetype)
+  end,
+})
+
+vim.api.nvim_create_autocmd("VimLeavePre", {
+  group = group,
+  pattern = "*",
+  callback = function()
+    require('maorun.code-stats').pulseSend()
+  end,
+})
+
+vim.api.nvim_create_autocmd({ "BufWrite", "BufLeave" }, {
+  group = group,
+  pattern = "*",
+  callback = function()
+    require('maorun.code-stats').pulseSend()
+  end,
+})
 
 function add(filetype)
     pulse.addXp(filetype, 1)
