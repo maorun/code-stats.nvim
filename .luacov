@@ -1,0 +1,17 @@
+include = {
+  "./lua/"
+}
+exclude = {
+  "^/home/runner/.local/*",
+  -- Adjusted to reflect a potential path for the current project on a CI runner
+  "^/home/runner/work/code-stats.nvim/code-stats.nvim/.luarocks/*",
+  "*/.luarocks/*",
+  -- It's also common to exclude test files themselves from coverage metrics
+  "./test/",
+  "%/test/" -- Another common pattern for test directories
+}
+
+-- Optional: Add patterns for specific test libraries if they reside in your source tree
+-- and you don't want them included in coverage of your actual plugin code.
+-- For example:
+-- "*/vusted/*"
