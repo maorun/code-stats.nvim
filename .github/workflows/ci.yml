@@ -1,0 +1,173 @@
+name: Ci
+
+on: [push]
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - name: Stylua
+        uses: JohnnyMorganz/stylua-action@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          version: latest
+          args: . # This will lint all files, including lua/
+      - name: Auto Commit
+        uses: stefanzweifel/git-auto-commit-action@v5
+        with:
+          commit_message: 'style: auto format Lua code'
+
+  test:
+    needs: lint
+    name: Run Test
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os:
+          - ubuntu-latest
+          - macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: rhysd/action-setup-vim@v1
+        id: vim
+        with:
+          neovim: true
+          version: nightly
+
+      - name: Cache Lua installation
+        uses: actions/cache@v4
+        id: cache-luajit
+        with:
+          path: .lua/
+          key: ${{ runner.os }}-lua-5.1
+          restore-keys: |
+            ${{ runner.os }}-lua-5.1
+
+      - name: Setup Lua
+        uses: leafo/gh-actions-lua@v11
+        if: steps.cache-luajit.outputs.cache-hit != 'true'
+        with:
+          luaVersion: "5.1"
+
+      - name: Cache Luarocks packages
+        uses: actions/cache@v4
+        id: cache-luarocks
+        with:
+          path: ~/.luarocks
+          key: ${{ runner.os }}-lua-5.1-luarocks-${{ hashFiles('**/rockspec') }}
+          restore-keys: |
+            ${{ runner.os }}-lua-5.1-luarocks-
+
+      - name: luarocks
+        uses: leafo/gh-actions-luarocks@v5
+
+      - name: install dependencies
+        shell: bash
+        run: |
+          luarocks install vusted
+          luarocks install inspect
+
+      - name: run test
+        shell: bash
+        run: |
+          # Assumes tests will be in a 'test' directory
+          # mkdir -p test
+          # Example: touch test/my_test.lua
+          vusted ./test
+
+  docs:
+    needs: test
+    runs-on: ubuntu-latest
+    name: pandoc to vimdoc
+    if: ${{ github.ref == 'refs/heads/master' }}
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.PAT }} # Consider if PAT is needed or GITHUB_TOKEN is sufficient
+      - name: panvimdoc
+        uses: kdheepak/panvimdoc@main
+        with:
+          vimdoc: code-stats.nvim # Adapted name
+          treesitter: true
+      - uses: stefanzweifel/git-auto-commit-action@v5
+        with:
+          commit_message: 'chore(doc): auto generate docs'
+
+  coverage:
+    needs: test
+    runs-on: ubuntu-latest
+    name: Generate and Commit Coverage Report
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Neovim
+        uses: rhysd/action-setup-vim@v1
+        id: nvim
+        with:
+          neovim: true
+          version: nightly
+
+      - name: Cache Lua installation
+        uses: actions/cache@v4
+        id: cache-luajit_coverage # Renamed id to avoid conflict with test job
+        with:
+          path: .lua/
+          key: ${{ runner.os }}-lua-5.1-coverage # Differentiated key for clarity
+          restore-keys: |
+            ${{ runner.os }}-lua-5.1-coverage
+
+      - name: Setup Lua
+        uses: leafo/gh-actions-lua@v11
+        if: steps.cache-luajit_coverage.outputs.cache-hit != 'true'
+        with:
+          luaVersion: "5.1"
+
+      - name: Cache Luarocks packages
+        uses: actions/cache@v4
+        id: cache-luarocks_coverage # Renamed id
+        with:
+          path: ~/.luarocks
+          key: ${{ runner.os }}-lua-5.1-luarocks-coverage-${{ hashFiles('**/rockspec') }} # Differentiated key
+          restore-keys: |
+            ${{ runner.os }}-lua-5.1-luarocks-coverage-
+
+      - name: Setup Luarocks
+        uses: leafo/gh-actions-luarocks@v5
+
+      - name: Install dependencies
+        run: |
+          luarocks install vusted
+          luarocks install luacov
+          luarocks install inspect
+          luarocks show luacov
+
+      - name: Clean up old coverage files
+        shell: bash
+        run: |
+          echo "Deleting old luacov files if they exist..."
+          rm -f luacov.stats.out
+          rm -f luacov.report.out
+          echo "Old luacov files deleted."
+
+      - name: Run tests for coverage
+        shell: bash
+        run: |
+          # Assumes tests will be in a 'test' directory
+          vusted --coverage ./test
+
+      - name: Generate Luacov report
+        run: luacov -c .luacov
+
+      - name: Commit coverage report
+        uses: stefanzweifel/git-auto-commit-action@v5
+        with:
+          commit_message: 'chore(ci): update coverage report [skip ci]'
+          file_pattern: luacov.report.out luacov.stats.out
