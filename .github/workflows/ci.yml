@@ -14,11 +14,12 @@ jobs:
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
           version: latest
-          args: . # This will lint all files, including lua/
+          args: .
       - name: Auto Commit
         uses: stefanzweifel/git-auto-commit-action@v5
         with:
           commit_message: 'style: auto format Lua code'
+
 
   test:
     needs: lint
@@ -73,9 +74,6 @@ jobs:
       - name: run test
         shell: bash
         run: |
-          # Assumes tests will be in a 'test' directory
-          # mkdir -p test
-          # Example: touch test/my_test.lua
           vusted ./test
 
   docs:
@@ -88,12 +86,11 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          token: ${{ secrets.GITHUB_TOKEN }}
-          
+          token: ${{ secrets.PAT }}
       - name: panvimdoc
         uses: kdheepak/panvimdoc@main
         with:
-          vimdoc: code-stats.nvim # Adapted name
+          vimdoc: code-stats.nvim
           treesitter: true
       - uses: stefanzweifel/git-auto-commit-action@v5
         with:
@@ -109,8 +106,8 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
-          token: ${{ secrets.GITHUB_TOKEN }}
-          
+          token: ${{ secrets.PAT }}
+
       - name: Setup Neovim
         uses: rhysd/action-setup-vim@v1
         id: nvim
@@ -120,27 +117,29 @@ jobs:
 
       - name: Cache Lua installation
         uses: actions/cache@v4
-        id: cache-luajit_coverage # Renamed id to avoid conflict with test job
+        id: cache-luajit # Added id for consistency, step name matches test job
         with:
           path: .lua/
-          key: ${{ runner.os }}-lua-5.1-coverage # Differentiated key for clarity
+          key: ${{ runner.os }}-lua-5.1 # Note: runner.os for coverage job will always be ubuntu-latest
           restore-keys: |
-            ${{ runner.os }}-lua-5.1-coverage
+            ${{ runner.os }}-lua-5.1
 
       - name: Setup Lua
         uses: leafo/gh-actions-lua@v11
-        if: steps.cache-luajit_coverage.outputs.cache-hit != 'true'
+        if: steps.cache-luajit.outputs.cache-hit != 'true'
         with:
           luaVersion: "5.1"
 
       - name: Cache Luarocks packages
         uses: actions/cache@v4
-        id: cache-luarocks_coverage # Renamed id
+        id: cache-luarocks # Added id
         with:
           path: ~/.luarocks
-          key: ${{ runner.os }}-lua-5.1-luarocks-coverage-${{ hashFiles('**/rockspec') }} # Differentiated key
+          # Since coverage job doesn't have rockspec typically, we might simplify the key
+          # or keep it consistent. For now, keep consistent.
+          key: ${{ runner.os }}-lua-5.1-luarocks-${{ hashFiles('**/rockspec') }}
           restore-keys: |
-            ${{ runner.os }}-lua-5.1-luarocks-coverage-
+            ${{ runner.os }}-lua-5.1-luarocks-
 
       - name: Setup Luarocks
         uses: leafo/gh-actions-luarocks@v5
@@ -163,7 +162,6 @@ jobs:
       - name: Run tests for coverage
         shell: bash
         run: |
-          # Assumes tests will be in a 'test' directory
           vusted --coverage ./test
 
       - name: Generate Luacov report
@@ -174,3 +172,4 @@ jobs:
         with:
           commit_message: 'chore(ci): update coverage report [skip ci]'
           file_pattern: luacov.report.out luacov.stats.out
+          # For now, committing both to ensure the report can be regenerated from the committed stats.
