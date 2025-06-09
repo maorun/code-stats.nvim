@@ -2353,7 +2353,7 @@
 /home/runner/work/code-stats.nvim/code-stats.nvim/.luarocks/share/lua/5.1/mediator.lua
 ==============================================================================
      local function getUniqueId(obj)
-***0   return tonumber(tostring(obj):match(':%s*[0xX]*(%x+)'), 16)
+  34   return tonumber(tostring(obj):match(':%s*[0xX]*(%x+)'), 16)
      end
 
      local function Subscriber(fn, options)
@@ -6762,7 +6762,7 @@ File                                                                            
 /home/runner/work/code-stats.nvim/code-stats.nvim/.luarocks/share/lua/5.1/busted/status.lua                        12   5      70.59%
 /home/runner/work/code-stats.nvim/code-stats.nvim/.luarocks/share/lua/5.1/busted/utils.lua                         11   10     52.38%
 /home/runner/work/code-stats.nvim/code-stats.nvim/.luarocks/share/lua/5.1/luassert/assert.lua                      2    78     2.50%
-/home/runner/work/code-stats.nvim/code-stats.nvim/.luarocks/share/lua/5.1/mediator.lua                             38   27     58.46%
+/home/runner/work/code-stats.nvim/code-stats.nvim/.luarocks/share/lua/5.1/mediator.lua                             39   26     60.00%
 /home/runner/work/code-stats.nvim/code-stats.nvim/.luarocks/share/lua/5.1/pl/List.lua                              62   156    28.44%
 /home/runner/work/code-stats.nvim/code-stats.nvim/.luarocks/share/lua/5.1/pl/class.lua                             20   82     19.61%
 /home/runner/work/code-stats.nvim/code-stats.nvim/.luarocks/share/lua/5.1/pl/dir.lua                               65   188    25.69%
@@ -6773,4 +6773,4 @@ File                                                                            
 /home/runner/work/code-stats.nvim/code-stats.nvim/.luarocks/share/lua/5.1/say/init.lua                             3    25     10.71%
 /home/runner/work/code-stats.nvim/code-stats.nvim/.luarocks/share/lua/5.1/vusted/run.lua                           5    18     21.74%
 ---------------------------------------------------------------------------------------------------------------------------------------
-Total                                                                                                              694  2254   23.54%
+Total                                                                                                              695  2253   23.58%
