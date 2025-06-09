@@ -4,7 +4,7 @@ include = {
 exclude = {
   "^/home/runner/.local/*",
   -- Adjusted to reflect a potential path for the current project on a CI runner
-  "^/home/runner/work/code-stats.nvim/code-stats.nvim/.luarocks/*",
+  "^/home/runner/work/code%-stats.nvim/code%-stats.nvim/.luarocks/*",
   "*/.luarocks/*",
   -- It's also common to exclude test files themselves from coverage metrics
   "./test/",
