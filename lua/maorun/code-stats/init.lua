@@ -7,7 +7,7 @@ local events = require("maorun.code-stats.events")
 
 local function currentXp()
 	-- currentXp now relies on M.getError() which gets its value from api.get_error()
-	if string.len(M.getError()) > 0 then
+	if string.len(api.get_error()) > 0 then
 		return cs_config.config.status_prefix .. "ERR"
 	end
 
