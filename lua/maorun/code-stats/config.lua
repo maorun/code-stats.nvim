@@ -15,6 +15,6 @@ local function setup(user_config)
 end
 
 return {
-    setup = setup,
-    config = config,
+	setup = setup,
+	config = config,
 }

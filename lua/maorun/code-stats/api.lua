@@ -29,22 +29,28 @@ end
 local function pulseSend()
 	if string.len(table.concat(vim.tbl_values(cs_config.config))) == 0 then
 		error_message = cs_config.config.status_prefix .. "Not Initialized"
-        -- Early return if not initialized, to prevent further checks if config is empty
-        if string.len(error_message) > 0 then return end
+		-- Early return if not initialized, to prevent further checks if config is empty
+		if string.len(error_message) > 0 then
+			return
+		end
 	end
 
 	local url = cs_config.config.api_url
 	if string.len(url) == 0 then
 		error_message = "no API-URL given"
-        if string.len(error_message) > 0 then return end
+		if string.len(error_message) > 0 then
+			return
+		end
 	end
 	if string.len(cs_config.config.api_key) == 0 then
 		error_message = "no api-key given"
-        if string.len(error_message) > 0 then return end
+		if string.len(error_message) > 0 then
+			return
+		end
 	end
 
-    -- If there was an error message set by previous checks, clear it if we proceed
-    error_message = ""
+	-- If there was an error message set by previous checks, clear it if we proceed
+	error_message = ""
 
 	local languages = vim.fn.map(pulse.xps, function(language, xp)
 		if xp > 0 then
@@ -62,7 +68,7 @@ local function pulseSend()
 end
 
 local function get_error()
-    return error_message
+	return error_message
 end
 
 return {
