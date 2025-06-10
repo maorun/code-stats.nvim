@@ -1,7 +1,33 @@
 ==============================================================================
+/home/runner/work/code-stats.nvim/code-stats.nvim/lua/maorun/code-stats/pulse.lua
+==============================================================================
+  7 local pulse = {
+  7 	xps = {},
+    }
+
+    pulse.addXp = function(lang, amount)
+ 20 	pulse.xps[lang] = pulse.getXp(lang) + amount
+    end
+
+    pulse.getXp = function(lang)
+ 20 	if pulse.xps[lang] then
+  9 		return pulse.xps[lang]
+    	end
+ 11 	return 0
+    end
+
+    pulse.reset = function()
+  1 	pulse.xps = {}
+    end
+
+  7 return pulse
+
+==============================================================================
 Summary
 ==============================================================================
 
-File  Hits Missed Coverage
---------------------------
-Total 0    0      0.00%
+File                                                                              Hits Missed Coverage
+------------------------------------------------------------------------------------------------------
+/home/runner/work/code-stats.nvim/code-stats.nvim/lua/maorun/code-stats/pulse.lua 8    0      100.00%
+------------------------------------------------------------------------------------------------------
+Total                                                                             8    0      100.00%
