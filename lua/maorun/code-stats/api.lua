@@ -27,7 +27,13 @@ local function requestToApi(body)
 end
 
 local function pulseSend()
-	if string.len(table.concat(vim.tbl_values(cs_config.config))) == 0 then
+	-- Check if config is initialized by checking essential string fields
+	local config_values = {
+		cs_config.config.status_prefix,
+		cs_config.config.api_url,
+		cs_config.config.api_key,
+	}
+	if string.len(table.concat(config_values)) == 0 then
 		error_message = cs_config.config.status_prefix .. "Not Initialized"
 		-- Early return if not initialized, to prevent further checks if config is empty
 		if string.len(error_message) > 0 then
