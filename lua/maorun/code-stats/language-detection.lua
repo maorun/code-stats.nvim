@@ -6,153 +6,104 @@ local function get_cursor_position()
 	return cursor[1] - 1, cursor[2] -- Convert to 0-indexed for treesitter
 end
 
--- Check if a node or its ancestors match any of the given node types
-local function is_node_type(node, types)
-	if not node then
-		return false
-	end
+-- Attempt to detect language using treesitter language injection
+local function detect_language_at_cursor()
+	local base_filetype = vim.bo.filetype
 
-	local node_type = node:type()
-	for _, type_name in ipairs(types) do
-		if node_type == type_name then
-			return true
-		end
-	end
-	return false
-end
-
--- Get the language from script tag attributes using treesitter
-local function get_script_language(script_node)
-	-- Default to javascript for script tags
-	local default_lang = "javascript"
-
-	-- Look for type attribute in script tag
-	for child in script_node:iter_children() do
-		if child:type() == "attribute" then
-			local attr_name = nil
-			local attr_value = nil
-
-			for attr_child in child:iter_children() do
-				if attr_child:type() == "attribute_name" then
-					attr_name = vim.treesitter.get_node_text(attr_child, 0)
-				elseif attr_child:type() == "quoted_attribute_value" then
-					attr_value = vim.treesitter.get_node_text(attr_child, 0)
-					-- Remove quotes from value
-					attr_value = attr_value:gsub("^[\"']", ""):gsub("[\"']$", "")
-				end
-			end
-
-			if attr_name == "type" and attr_value then
-				-- Check for JavaScript types
-				if attr_value:match("javascript") or attr_value:match("application/javascript") then
-					return "javascript"
-				elseif attr_value:match("module") then
-					return "javascript"
-				end
-			end
-		end
-	end
-
-	return default_lang
-end
-
--- Get the language from style tag attributes using treesitter
-local function get_style_language(style_node)
-	-- Default to css for style tags
-	local default_lang = "css"
-
-	-- Look for type attribute in style tag
-	for child in style_node:iter_children() do
-		if child:type() == "attribute" then
-			local attr_name = nil
-			local attr_value = nil
-
-			for attr_child in child:iter_children() do
-				if attr_child:type() == "attribute_name" then
-					attr_name = vim.treesitter.get_node_text(attr_child, 0)
-				elseif attr_child:type() == "quoted_attribute_value" then
-					attr_value = vim.treesitter.get_node_text(attr_child, 0)
-					-- Remove quotes from value
-					attr_value = attr_value:gsub("^[\"']", ""):gsub("[\"']$", "")
-				end
-			end
-
-			if attr_name == "type" and attr_value then
-				-- Check for CSS types
-				if attr_value:match("css") then
-					return "css"
-				end
-			end
-		end
-	end
-
-	return default_lang
-end
-
--- Check if cursor is within any embedded language block using treesitter
-local function detect_embedded_language(filetype)
-	-- Only check for embedded languages in HTML files
-	if filetype ~= "html" then
-		return filetype
-	end
-
-	-- Check if treesitter is available for HTML
-	local has_parser, parser = pcall(vim.treesitter.get_parser, 0, "html")
+	-- Try to get any treesitter parser for the buffer
+	local has_parser, parser = pcall(vim.treesitter.get_parser, 0)
 	if not has_parser or not parser then
 		-- Fallback to original filetype if no treesitter parser
-		return filetype
+		return base_filetype
 	end
 
 	local line, col = get_cursor_position()
-	local tree = parser:parse()[1]
-	local root = tree:root()
 
-	-- Get the node at cursor position
-	local node = root:named_descendant_for_range(line, col, line, col)
+	-- Try to get the language tree at the cursor position
+	-- This will automatically handle language injection (e.g., CSS in HTML, JS in HTML, etc.)
+	local lang_tree = parser:language_for_range({ line, col, line, col })
+	if lang_tree then
+		local lang = lang_tree:lang()
+		-- Return the detected language if it's different from the base filetype
+		if lang and lang ~= base_filetype then
+			return lang
+		end
+	end
 
-	-- Walk up the tree to find if we're inside script or style elements
-	local current = node
-	while current do
-		local node_type = current:type()
+	-- If language injection doesn't provide a different language, try to get the
+	-- tree at cursor position and check if it's in a different parser context
+	local tree_for_range = parser:tree_for_range({ line, col, line, col }, { include_children = true })
+	if tree_for_range then
+		-- Get the root language of this tree
+		local tree_lang = tree_for_range:lang()
+		if tree_lang and tree_lang ~= base_filetype then
+			return tree_lang
+		end
+	end
 
-		if node_type == "script_element" then
-			-- We're inside a script tag, check for language type
-			return get_script_language(current)
-		elseif node_type == "style_element" then
-			-- We're inside a style tag, check for language type
-			return get_style_language(current)
-		elseif is_node_type(current, { "raw_text", "text" }) then
-			-- Check if this text node is inside script or style
-			local parent = current:parent()
-			if parent then
-				local parent_type = parent:type()
-				if parent_type == "script_element" then
-					return get_script_language(parent)
-				elseif parent_type == "style_element" then
-					return get_style_language(parent)
+	-- Check if there are any child parsers (injected languages)
+	local children = parser:children()
+	for _, child_parser in pairs(children) do
+		local child_lang = child_parser:lang()
+		if child_lang then
+			-- Check if cursor is within this child parser's range
+			local child_trees = child_parser:trees()
+			for _, child_tree in ipairs(child_trees) do
+				local root = child_tree:root()
+				local start_row, start_col, end_row, end_col = root:range()
+
+				-- Check if cursor is within this child tree's range
+				if line >= start_row and line <= end_row then
+					if line == start_row and col < start_col then
+						-- Before start
+					elseif line == end_row and col > end_col then
+						-- After end
+					else
+						-- Within range
+						return child_lang
+					end
 				end
 			end
 		end
-
-		current = current:parent()
 	end
 
-	-- No embedded language detected, return original filetype
-	return filetype
+	-- No injected language found, return base filetype
+	return base_filetype
 end
 
 -- Main function to detect the current language at cursor position
 function M.detect_language()
-	local base_filetype = vim.bo.filetype
-	return detect_embedded_language(base_filetype)
+	return detect_language_at_cursor()
 end
 
 -- Function to get supported embedded languages for a given filetype
+-- This is now more dynamic - it discovers available injected languages
 function M.get_supported_languages(filetype)
-	if filetype == "html" then
-		return { "html", "css", "javascript" }
+	local languages = { filetype }
+
+	-- Try to get parser and check for injected languages
+	local has_parser, parser = pcall(vim.treesitter.get_parser, 0)
+	if has_parser and parser then
+		local children = parser:children()
+		for _, child_parser in pairs(children) do
+			local child_lang = child_parser:lang()
+			if child_lang and child_lang ~= filetype then
+				-- Add to supported languages if not already present
+				local found = false
+				for _, lang in ipairs(languages) do
+					if lang == child_lang then
+						found = true
+						break
+					end
+				end
+				if not found then
+					table.insert(languages, child_lang)
+				end
+			end
+		end
 	end
-	return { filetype }
+
+	return languages
 end
 
 return M
