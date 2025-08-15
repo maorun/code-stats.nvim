@@ -1,6 +1,6 @@
 local lang_detection = require("maorun.code-stats.language-detection")
 
-local function setup_autocommands(add_xp_callback, pulse_send_callback)
+local function setup_autocommands(add_xp_callback, pulse_send_callback, pulse_send_on_exit_callback)
 	local group = vim.api.nvim_create_augroup("codestats_track", { clear = true })
 
 	vim.api.nvim_create_autocmd({ "InsertCharPre", "TextChanged" }, {
@@ -18,8 +18,8 @@ local function setup_autocommands(add_xp_callback, pulse_send_callback)
 		group = group,
 		pattern = "*",
 		callback = function()
-			if pulse_send_callback then
-				pulse_send_callback()
+			if pulse_send_on_exit_callback then
+				pulse_send_on_exit_callback()
 			end
 		end,
 	})
