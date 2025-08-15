@@ -34,8 +34,7 @@ describe("Pulse Persistence", function()
 					write = function(self, data)
 						mock_files[path] = data
 					end,
-					close = function()
-					end,
+					close = function() end,
 				}
 			elseif mode == "r" then
 				if mock_files[path] then
@@ -43,8 +42,7 @@ describe("Pulse Persistence", function()
 						read = function(self, format)
 							return mock_files[path]
 						end,
-						close = function()
-						end,
+						close = function() end,
 					}
 				else
 					return nil
