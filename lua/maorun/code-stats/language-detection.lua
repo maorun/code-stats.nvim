@@ -1,86 +1,140 @@
 local M = {}
 
--- Language patterns for embedded content detection
-local language_patterns = {
-	javascript = {
-		-- Script tags with type or no type (defaults to javascript)
-		{ start_pattern = "<script[^>]*>", end_pattern = "</script>", lang = "javascript" },
-		{
-			start_pattern = "<script[^>]*type%s*=%s*['\"]text/javascript['\"][^>]*>",
-			end_pattern = "</script>",
-			lang = "javascript",
-		},
-		{
-			start_pattern = "<script[^>]*type%s*=%s*['\"]application/javascript['\"][^>]*>",
-			end_pattern = "</script>",
-			lang = "javascript",
-		},
-	},
-	css = {
-		-- Style tags
-		{ start_pattern = "<style[^>]*>", end_pattern = "</style>", lang = "css" },
-		{ start_pattern = "<style[^>]*type%s*=%s*['\"]text/css['\"][^>]*>", end_pattern = "</style>", lang = "css" },
-	},
-}
-
 -- Get the current cursor position
 local function get_cursor_position()
 	local cursor = vim.api.nvim_win_get_cursor(0)
-	return cursor[1], cursor[2] -- line (1-indexed), column (0-indexed)
+	return cursor[1] - 1, cursor[2] -- Convert to 0-indexed for treesitter
 end
 
--- Get buffer content around cursor position
-local function get_buffer_content()
-	return vim.api.nvim_buf_get_lines(0, 0, -1, false)
-end
+-- Check if a node or its ancestors match any of the given node types
+local function is_node_type(node, types)
+	if not node then
+		return false
+	end
 
--- Convert line/column to absolute character position
-local function get_absolute_position(lines, line, col)
-	local pos = 0
-	for i = 1, line - 1 do
-		if lines[i] then
-			pos = pos + #lines[i] + 1 -- +1 for newline
+	local node_type = node:type()
+	for _, type_name in ipairs(types) do
+		if node_type == type_name then
+			return true
 		end
 	end
-	return pos + col
+	return false
 end
 
--- Check if cursor is within any embedded language block
+-- Get the language from script tag attributes using treesitter
+local function get_script_language(script_node)
+	-- Default to javascript for script tags
+	local default_lang = "javascript"
+
+	-- Look for type attribute in script tag
+	for child in script_node:iter_children() do
+		if child:type() == "attribute" then
+			local attr_name = nil
+			local attr_value = nil
+
+			for attr_child in child:iter_children() do
+				if attr_child:type() == "attribute_name" then
+					attr_name = vim.treesitter.get_node_text(attr_child, 0)
+				elseif attr_child:type() == "quoted_attribute_value" then
+					attr_value = vim.treesitter.get_node_text(attr_child, 0)
+					-- Remove quotes from value
+					attr_value = attr_value:gsub("^[\"']", ""):gsub("[\"']$", "")
+				end
+			end
+
+			if attr_name == "type" and attr_value then
+				-- Check for JavaScript types
+				if attr_value:match("javascript") or attr_value:match("application/javascript") then
+					return "javascript"
+				elseif attr_value:match("module") then
+					return "javascript"
+				end
+			end
+		end
+	end
+
+	return default_lang
+end
+
+-- Get the language from style tag attributes using treesitter
+local function get_style_language(style_node)
+	-- Default to css for style tags
+	local default_lang = "css"
+
+	-- Look for type attribute in style tag
+	for child in style_node:iter_children() do
+		if child:type() == "attribute" then
+			local attr_name = nil
+			local attr_value = nil
+
+			for attr_child in child:iter_children() do
+				if attr_child:type() == "attribute_name" then
+					attr_name = vim.treesitter.get_node_text(attr_child, 0)
+				elseif attr_child:type() == "quoted_attribute_value" then
+					attr_value = vim.treesitter.get_node_text(attr_child, 0)
+					-- Remove quotes from value
+					attr_value = attr_value:gsub("^[\"']", ""):gsub("[\"']$", "")
+				end
+			end
+
+			if attr_name == "type" and attr_value then
+				-- Check for CSS types
+				if attr_value:match("css") then
+					return "css"
+				end
+			end
+		end
+	end
+
+	return default_lang
+end
+
+-- Check if cursor is within any embedded language block using treesitter
 local function detect_embedded_language(filetype)
 	-- Only check for embedded languages in HTML files
 	if filetype ~= "html" then
 		return filetype
 	end
 
+	-- Check if treesitter is available for HTML
+	local has_parser, parser = pcall(vim.treesitter.get_parser, 0, "html")
+	if not has_parser or not parser then
+		-- Fallback to original filetype if no treesitter parser
+		return filetype
+	end
+
 	local line, col = get_cursor_position()
-	local lines = get_buffer_content()
-	local content = table.concat(lines, "\n")
-	local cursor_pos = get_absolute_position(lines, line, col)
+	local tree = parser:parse()[1]
+	local root = tree:root()
 
-	-- Check each language pattern
-	for lang_name, patterns in pairs(language_patterns) do
-		for _, pattern in ipairs(patterns) do
-			local start_pos = 1
-			while true do
-				local start_match_begin, start_match_end = content:find(pattern.start_pattern, start_pos)
-				if not start_match_begin then
-					break
+	-- Get the node at cursor position
+	local node = root:named_descendant_for_range(line, col, line, col)
+
+	-- Walk up the tree to find if we're inside script or style elements
+	local current = node
+	while current do
+		local node_type = current:type()
+
+		if node_type == "script_element" then
+			-- We're inside a script tag, check for language type
+			return get_script_language(current)
+		elseif node_type == "style_element" then
+			-- We're inside a style tag, check for language type
+			return get_style_language(current)
+		elseif is_node_type(current, { "raw_text", "text" }) then
+			-- Check if this text node is inside script or style
+			local parent = current:parent()
+			if parent then
+				local parent_type = parent:type()
+				if parent_type == "script_element" then
+					return get_script_language(parent)
+				elseif parent_type == "style_element" then
+					return get_style_language(parent)
 				end
-
-				local end_match_begin, end_match_end = content:find(pattern.end_pattern, start_match_end + 1)
-				if not end_match_begin then
-					-- No closing tag found, assume it extends to end of file
-					end_match_end = #content
-				end
-
-				-- Check if cursor is within this block
-				if cursor_pos >= start_match_end and cursor_pos <= end_match_begin then
-					return pattern.lang
-				end
-
-				start_pos = end_match_end + 1
 			end
 		end
+
+		current = current:parent()
 	end
 
 	-- No embedded language detected, return original filetype

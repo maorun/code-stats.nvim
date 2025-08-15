@@ -10,13 +10,11 @@ describe("Language Detection", function()
 		_G.vim = _G.vim or {}
 		_G.vim.bo = { filetype = "html" }
 		_G.vim.api = _G.vim.api or {}
+		_G.vim.treesitter = _G.vim.treesitter or {}
 
-		-- Mock buffer and cursor functions
+		-- Mock cursor position
 		_G.vim.api.nvim_win_get_cursor = function()
 			return { 1, 0 }
-		end
-		_G.vim.api.nvim_buf_get_lines = function()
-			return { "<html><body></body></html>" }
 		end
 	end)
 
@@ -26,120 +24,326 @@ describe("Language Detection", function()
 		assert.are.equal("lua", result)
 	end)
 
-	it("should detect HTML as base language when not in embedded content", function()
-		_G.vim.api.nvim_buf_get_lines = function()
-			return { "<html>", "<body>", "<p>Hello World</p>", "</body>", "</html>" }
+	it("should fallback to HTML when treesitter is not available", function()
+		_G.vim.treesitter.get_parser = function()
+			error("No parser available")
 		end
-		_G.vim.api.nvim_win_get_cursor = function()
-			return { 3, 5 }
-		end -- Inside <p> tag
 
 		local result = lang_detection.detect_language()
 		assert.are.equal("html", result)
 	end)
 
-	it("should detect JavaScript inside script tags", function()
-		_G.vim.api.nvim_buf_get_lines = function()
-			return {
-				"<html>",
-				"<script>",
-				"console.log('hello');",
-				"</script>",
-				"</html>",
-			}
+	it("should detect HTML as base language when not in embedded content", function()
+		-- Mock treesitter parser and tree
+		local mock_node = {
+			type = function()
+				return "element"
+			end,
+			parent = function()
+				return nil
+			end,
+		}
+
+		local mock_root = {
+			named_descendant_for_range = function()
+				return mock_node
+			end,
+		}
+
+		local mock_tree = {
+			root = function()
+				return mock_root
+			end,
+		}
+
+		local mock_parser = {
+			parse = function()
+				return { mock_tree }
+			end,
+		}
+
+		_G.vim.treesitter.get_parser = function()
+			return mock_parser
 		end
 		_G.vim.api.nvim_win_get_cursor = function()
 			return { 3, 5 }
-		end -- Inside script tag
+		end
+
+		local result = lang_detection.detect_language()
+		assert.are.equal("html", result)
+	end)
+
+	it("should detect JavaScript inside script elements", function()
+		-- Mock a script element node
+		local mock_script_node = {
+			type = function()
+				return "script_element"
+			end,
+			iter_children = function()
+				return function() end
+			end,
+			parent = function()
+				return nil
+			end,
+		}
+
+		local mock_root = {
+			named_descendant_for_range = function()
+				return mock_script_node
+			end,
+		}
+
+		local mock_tree = {
+			root = function()
+				return mock_root
+			end,
+		}
+
+		local mock_parser = {
+			parse = function()
+				return { mock_tree }
+			end,
+		}
+
+		_G.vim.treesitter.get_parser = function()
+			return mock_parser
+		end
+		_G.vim.api.nvim_win_get_cursor = function()
+			return { 3, 5 }
+		end
 
 		local result = lang_detection.detect_language()
 		assert.are.equal("javascript", result)
 	end)
 
-	it("should detect CSS inside style tags", function()
-		_G.vim.api.nvim_buf_get_lines = function()
-			return {
-				"<html>",
-				"<style>",
-				"body { color: red; }",
-				"</style>",
-				"</html>",
-			}
+	it("should detect CSS inside style elements", function()
+		-- Mock a style element node
+		local mock_style_node = {
+			type = function()
+				return "style_element"
+			end,
+			iter_children = function()
+				return function() end
+			end,
+			parent = function()
+				return nil
+			end,
+		}
+
+		local mock_root = {
+			named_descendant_for_range = function()
+				return mock_style_node
+			end,
+		}
+
+		local mock_tree = {
+			root = function()
+				return mock_root
+			end,
+		}
+
+		local mock_parser = {
+			parse = function()
+				return { mock_tree }
+			end,
+		}
+
+		_G.vim.treesitter.get_parser = function()
+			return mock_parser
 		end
 		_G.vim.api.nvim_win_get_cursor = function()
 			return { 3, 10 }
-		end -- Inside style tag
+		end
 
 		local result = lang_detection.detect_language()
 		assert.are.equal("css", result)
 	end)
 
-	it("should detect JavaScript in script tags with type attribute", function()
-		_G.vim.api.nvim_buf_get_lines = function()
-			return {
-				"<html>",
-				"<script type='text/javascript'>",
-				"var x = 1;",
-				"</script>",
-				"</html>",
-			}
+	it("should detect JavaScript in text nodes inside script elements", function()
+		-- Mock a text node inside script element
+		local mock_script_parent = {
+			type = function()
+				return "script_element"
+			end,
+			iter_children = function()
+				return function() end
+			end,
+			parent = function()
+				return nil
+			end,
+		}
+
+		local mock_text_node = {
+			type = function()
+				return "raw_text"
+			end,
+			parent = function()
+				return mock_script_parent
+			end,
+		}
+
+		local mock_root = {
+			named_descendant_for_range = function()
+				return mock_text_node
+			end,
+		}
+
+		local mock_tree = {
+			root = function()
+				return mock_root
+			end,
+		}
+
+		local mock_parser = {
+			parse = function()
+				return { mock_tree }
+			end,
+		}
+
+		_G.vim.treesitter.get_parser = function()
+			return mock_parser
 		end
 		_G.vim.api.nvim_win_get_cursor = function()
 			return { 3, 2 }
-		end -- Inside script tag
+		end
 
 		local result = lang_detection.detect_language()
 		assert.are.equal("javascript", result)
 	end)
 
-	it("should detect CSS in style tags with type attribute", function()
-		_G.vim.api.nvim_buf_get_lines = function()
-			return {
-				"<html>",
-				"<style type='text/css'>",
-				".class { margin: 0; }",
-				"</style>",
-				"</html>",
-			}
+	it("should detect CSS in text nodes inside style elements", function()
+		-- Mock a text node inside style element
+		local mock_style_parent = {
+			type = function()
+				return "style_element"
+			end,
+			iter_children = function()
+				return function() end
+			end,
+			parent = function()
+				return nil
+			end,
+		}
+
+		local mock_text_node = {
+			type = function()
+				return "text"
+			end,
+			parent = function()
+				return mock_style_parent
+			end,
+		}
+
+		local mock_root = {
+			named_descendant_for_range = function()
+				return mock_text_node
+			end,
+		}
+
+		local mock_tree = {
+			root = function()
+				return mock_root
+			end,
+		}
+
+		local mock_parser = {
+			parse = function()
+				return { mock_tree }
+			end,
+		}
+
+		_G.vim.treesitter.get_parser = function()
+			return mock_parser
 		end
 		_G.vim.api.nvim_win_get_cursor = function()
 			return { 3, 5 }
-		end -- Inside style tag
+		end
 
 		local result = lang_detection.detect_language()
 		assert.are.equal("css", result)
 	end)
 
-	it("should handle multiple script/style blocks correctly", function()
-		_G.vim.api.nvim_buf_get_lines = function()
-			return {
-				"<html>",
-				"<style>body { color: red; }</style>",
-				"<p>Some HTML</p>",
-				"<script>console.log('test');</script>",
-				"</html>",
-			}
+	it("should handle script tags with type attributes", function()
+		-- Mock a script element with type attribute
+		local mock_attr_value_node = {
+			type = function()
+				return "quoted_attribute_value"
+			end,
+		}
+
+		local mock_attr_name_node = {
+			type = function()
+				return "attribute_name"
+			end,
+		}
+
+		local mock_attr_node = {
+			type = function()
+				return "attribute"
+			end,
+			iter_children = function()
+				local i = 0
+				local children = { mock_attr_name_node, mock_attr_value_node }
+				return function()
+					i = i + 1
+					return children[i]
+				end
+			end,
+		}
+
+		local mock_script_node = {
+			type = function()
+				return "script_element"
+			end,
+			iter_children = function()
+				local i = 0
+				local children = { mock_attr_node }
+				return function()
+					i = i + 1
+					return children[i]
+				end
+			end,
+			parent = function()
+				return nil
+			end,
+		}
+
+		local mock_root = {
+			named_descendant_for_range = function()
+				return mock_script_node
+			end,
+		}
+
+		local mock_tree = {
+			root = function()
+				return mock_root
+			end,
+		}
+
+		local mock_parser = {
+			parse = function()
+				return { mock_tree }
+			end,
+		}
+
+		-- Mock treesitter get_node_text function
+		_G.vim.treesitter.get_node_text = function(node, bufnr)
+			if node == mock_attr_name_node then
+				return "type"
+			elseif node == mock_attr_value_node then
+				return '"text/javascript"'
+			end
+			return ""
 		end
 
-		-- Test cursor in style block
-		_G.vim.api.nvim_win_get_cursor = function()
-			return { 2, 15 }
+		_G.vim.treesitter.get_parser = function()
+			return mock_parser
 		end
+		_G.vim.api.nvim_win_get_cursor = function()
+			return { 3, 2 }
+		end
+
 		local result = lang_detection.detect_language()
-		assert.are.equal("css", result)
-
-		-- Test cursor in HTML content
-		_G.vim.api.nvim_win_get_cursor = function()
-			return { 3, 5 }
-		end
-		result = lang_detection.detect_language()
-		assert.are.equal("html", result)
-
-		-- Test cursor in script block
-		_G.vim.api.nvim_win_get_cursor = function()
-			return { 4, 15 }
-		end
-		result = lang_detection.detect_language()
 		assert.are.equal("javascript", result)
 	end)
 
