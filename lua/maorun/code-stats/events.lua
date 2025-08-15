@@ -1,3 +1,5 @@
+local lang_detection = require("maorun.code-stats.language-detection")
+
 local function setup_autocommands(add_xp_callback, pulse_send_callback)
 	local group = vim.api.nvim_create_augroup("codestats_track", { clear = true })
 
@@ -6,7 +8,8 @@ local function setup_autocommands(add_xp_callback, pulse_send_callback)
 		pattern = "*",
 		callback = function()
 			if add_xp_callback then
-				add_xp_callback(vim.bo.filetype)
+				local detected_lang = lang_detection.detect_language()
+				add_xp_callback(detected_lang)
 			end
 		end,
 	})

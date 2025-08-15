@@ -2,6 +2,7 @@ local pulse = require("maorun.code-stats.pulse")
 local cs_config = require("maorun.code-stats.config")
 local api = require("maorun.code-stats.api")
 local events = require("maorun.code-stats.events")
+local lang_detection = require("maorun.code-stats.language-detection")
 
 -- The local 'error' variable has been removed. Errors are now primarily managed in api.lua.
 
@@ -11,7 +12,8 @@ local function currentXp()
 		return cs_config.config.status_prefix .. "ERR"
 	end
 
-	return cs_config.config.status_prefix .. pulse.getXp(vim.bo.filetype)
+	local detected_lang = lang_detection.detect_language()
+	return cs_config.config.status_prefix .. pulse.getXp(detected_lang)
 end
 
 local M = {}
