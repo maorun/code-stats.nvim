@@ -22,7 +22,6 @@ jobs:
 
 
   test:
-    needs: lint
     name: Run Test
     runs-on: ${{ matrix.os }}
     strategy:
@@ -97,7 +96,6 @@ jobs:
           commit_message: 'chore(doc): auto generate docs'
 
   coverage:
-    needs: test
     runs-on: ubuntu-latest
     name: Generate and Commit Coverage Report
     permissions:
