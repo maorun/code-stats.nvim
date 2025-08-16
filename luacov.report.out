@@ -1,11 +1,11 @@
 ==============================================================================
 /home/runner/work/code-stats.nvim/code-stats.nvim/lua/maorun/code-stats/api.lua
 ==============================================================================
-  1 local curl = require("plenary.curl")
-  1 local pulse = require("maorun.code-stats.pulse")
-  1 local cs_config = require("maorun.code-stats.config")
+  2 local curl = require("plenary.curl")
+  2 local pulse = require("maorun.code-stats.pulse")
+  2 local cs_config = require("maorun.code-stats.config")
 
-  1 local error_message = ""
+  2 local error_message = ""
 
     local function requestToApi(body)
 **0 	local url = cs_config.config.api_url
@@ -77,52 +77,52 @@
     end
 
     local function get_error()
-**0 	return error_message
+  8 	return error_message
     end
 
-  1 return {
-  1 	pulseSend = pulseSend,
-  1 	requestToApi = requestToApi,
-  1 	get_error = get_error,
-  1 }
+  2 return {
+  2 	pulseSend = pulseSend,
+  2 	requestToApi = requestToApi,
+  2 	get_error = get_error,
+  2 }
 
 ==============================================================================
 /home/runner/work/code-stats.nvim/code-stats.nvim/lua/maorun/code-stats/config.lua
 ==============================================================================
-  5 local defaults = {
+  6 local defaults = {
     	status_prefix = "C:S ",
     	api_url = "https://codestats.net/",
     	api_key = "",
-  5 	ignored_filetypes = {},
+  6 	ignored_filetypes = {},
     }
-  5 local config = defaults
+  6 local config = defaults
 
-  5 local M = {
- 10 	config = vim.deepcopy(defaults),
+  6 local M = {
+ 12 	config = vim.deepcopy(defaults),
     }
 
-  5 function M.setup(user_config)
-  7 	local globalConfig = {}
-  7 	if vim.g.codestats_api_key then
+  6 function M.setup(user_config)
+ 13 	local globalConfig = {}
+ 13 	if vim.g.codestats_api_key then
 **0 		globalConfig.api_key = vim.g.codestats_api_key
     	end
- 14 	config = vim.tbl_deep_extend("force", defaults, user_config or {}, globalConfig)
-  7 	M.config = config
-  7 	return config
+ 26 	config = vim.tbl_deep_extend("force", defaults, user_config or {}, globalConfig)
+ 13 	M.config = config
+ 13 	return config
     end
 
-  5 return M
+  6 return M
 
 ==============================================================================
 /home/runner/work/code-stats.nvim/code-stats.nvim/lua/maorun/code-stats/events.lua
 ==============================================================================
-  1 local lang_detection = require("maorun.code-stats.language-detection")
+  2 local lang_detection = require("maorun.code-stats.language-detection")
 
     local function setup_autocommands(add_xp_callback, pulse_send_callback)
-  1 	local group = vim.api.nvim_create_augroup("codestats_track", { clear = true })
+  7 	local group = vim.api.nvim_create_augroup("codestats_track", { clear = true })
 
-  2 	vim.api.nvim_create_autocmd({ "InsertCharPre", "TextChanged" }, {
-  1 		group = group,
+ 14 	vim.api.nvim_create_autocmd({ "InsertCharPre", "TextChanged" }, {
+  7 		group = group,
     		pattern = "*",
     		callback = function()
 **0 			if add_xp_callback then
@@ -132,8 +132,8 @@
     		end,
     	})
 
-  2 	vim.api.nvim_create_autocmd("VimLeavePre", {
-  1 		group = group,
+ 14 	vim.api.nvim_create_autocmd("VimLeavePre", {
+  7 		group = group,
     		pattern = "*",
     		callback = function()
 **0 			if pulse_send_callback then
@@ -142,8 +142,8 @@
     		end,
     	})
 
-  2 	vim.api.nvim_create_autocmd({ "BufWrite", "BufLeave" }, {
-  1 		group = group,
+ 14 	vim.api.nvim_create_autocmd({ "BufWrite", "BufLeave" }, {
+  7 		group = group,
     		pattern = "*",
     		callback = function()
 **0 			if pulse_send_callback then
@@ -153,18 +153,18 @@
     	})
     end
 
-  1 return {
-  1 	setup_autocommands = setup_autocommands,
-  1 }
+  2 return {
+  2 	setup_autocommands = setup_autocommands,
+  2 }
 
 ==============================================================================
 /home/runner/work/code-stats.nvim/code-stats.nvim/lua/maorun/code-stats/init.lua
 ==============================================================================
-  1 local pulse = require("maorun.code-stats.pulse")
-  1 local cs_config = require("maorun.code-stats.config")
-  1 local api = require("maorun.code-stats.api")
-  1 local events = require("maorun.code-stats.events")
-  1 local lang_detection = require("maorun.code-stats.language-detection")
+  7 local pulse = require("maorun.code-stats.pulse")
+  7 local cs_config = require("maorun.code-stats.config")
+  7 local api = require("maorun.code-stats.api")
+  7 local events = require("maorun.code-stats.events")
+  7 local lang_detection = require("maorun.code-stats.language-detection")
 
     -- The local 'error' variable has been removed. Errors are now primarily managed in api.lua.
 
@@ -178,34 +178,128 @@
 **0 	return cs_config.config.status_prefix .. pulse.getXp(detected_lang)
     end
 
-  1 local M = {}
+    -- Get formatted XP information for the current language
+    local function getCurrentLanguageXP()
+  3 	if string.len(api.get_error()) > 0 then
+**0 		return "Error: " .. api.get_error()
+    	end
 
-  1 function M.add(filetype)
+  1 	local detected_lang = lang_detection.detect_language()
+  1 	local xp = pulse.getXp(detected_lang)
+  1 	return string.format("Language: %s, XP: %d", detected_lang or "unknown", xp)
+    end
+
+    -- Get formatted XP information for all tracked languages
+    local function getAllLanguagesXP()
+  9 	if string.len(api.get_error()) > 0 then
+**0 		return "Error: " .. api.get_error()
+    	end
+
+  3 	local result = "Tracked languages and XP:\n"
+  3 	local languages = {}
+
+    	-- Collect all languages with XP > 0
+  9 	for lang, xp in pairs(pulse.xps) do
+  6 		if xp > 0 then
+  6 			table.insert(languages, { lang = lang, xp = xp })
+    		end
+    	end
+
+    	-- Sort by XP descending
+  6 	table.sort(languages, function(a, b)
+  6 		return a.xp > b.xp
+    	end)
+
+  3 	if #languages == 0 then
+  1 		result = result .. "  No XP tracked yet"
+    	else
+  8 		for _, entry in ipairs(languages) do
+  6 			result = result .. string.format("  %s: %d XP\n", entry.lang, entry.xp)
+    		end
+    		-- Remove trailing newline
+  4 		result = result:sub(1, -2)
+    	end
+
+  3 	return result
+    end
+
+    -- Get formatted XP information for a specific language
+    local function getLanguageXP(language)
+ 12 	if string.len(api.get_error()) > 0 then
+**0 		return "Error: " .. api.get_error()
+    	end
+
+  4 	if not language or language == "" then
+  2 		return "Error: No language specified"
+    	end
+
+  2 	local xp = pulse.getXp(language)
+  2 	return string.format("Language: %s, XP: %d", language, xp)
+    end
+
+  7 local M = {}
+
+  7 function M.add(filetype)
     	-- Check if filetype is in ignored list
- 10 	for _, ignored_type in ipairs(cs_config.config.ignored_filetypes) do
+ 23 	for _, ignored_type in ipairs(cs_config.config.ignored_filetypes) do
   8 		if filetype == ignored_type then
   3 			return -- Don't add XP for ignored filetypes
     		end
     	end
-  2 	pulse.addXp(filetype, 1)
+ 15 	pulse.addXp(filetype, 1)
     end
 
-  1 M.setup = cs_config.setup
-  1 M.pulseSend = api.pulseSend
-  1 M.currentXp = currentXp
+  7 M.setup = cs_config.setup
+  7 M.pulseSend = api.pulseSend
+  7 M.currentXp = currentXp
     M.getError = function()
 **0 	return api.get_error()
     end
 
-    -- Setup autocommands by passing the local add function and api.pulseSend
-  1 events.setup_autocommands(M.add, M.pulseSend)
+    -- Public functions for user commands
+  7 M.getCurrentLanguageXP = getCurrentLanguageXP
+  7 M.getAllLanguagesXP = getAllLanguagesXP
+  7 M.getLanguageXP = getLanguageXP
 
-  1 return M
+    -- Setup autocommands by passing the local add function and api.pulseSend
+  7 events.setup_autocommands(M.add, M.pulseSend)
+
+    -- Create user commands
+ 14 vim.api.nvim_create_user_command("CodeStatsXP", function()
+**0 	local info = getCurrentLanguageXP()
+**0 	vim.notify(info, vim.log.levels.INFO, { title = "Code::Stats" })
+  7 end, { desc = "Show XP for current language" })
+
+ 14 vim.api.nvim_create_user_command("CodeStatsAll", function()
+**0 	local info = getAllLanguagesXP()
+**0 	vim.notify(info, vim.log.levels.INFO, { title = "Code::Stats" })
+  7 end, { desc = "Show XP for all tracked languages" })
+
+ 14 vim.api.nvim_create_user_command("CodeStatsLang", function(opts)
+**0 	local info = getLanguageXP(opts.args)
+**0 	vim.notify(info, vim.log.levels.INFO, { title = "Code::Stats" })
+  7 end, {
+    	nargs = 1,
+    	desc = "Show XP for specific language",
+    	complete = function()
+    		-- Return list of tracked languages for completion
+**0 		local languages = {}
+**0 		for lang, xp in pairs(pulse.xps) do
+**0 			if xp > 0 then
+**0 				table.insert(languages, lang)
+    			end
+    		end
+**0 		table.sort(languages)
+**0 		return languages
+    	end,
+    })
+
+  7 return M
 
 ==============================================================================
 /home/runner/work/code-stats.nvim/code-stats.nvim/lua/maorun/code-stats/language-detection.lua
 ==============================================================================
- 10 local M = {}
+ 11 local M = {}
 
     -- Get the current cursor position
     local function get_cursor_position()
@@ -215,13 +309,13 @@
 
     -- Attempt to detect language using treesitter language injection
     local function detect_language_at_cursor()
-  6 	local base_filetype = vim.bo.filetype
+  7 	local base_filetype = vim.bo.filetype
 
     	-- Try to get any treesitter parser for the buffer
-  6 	local has_parser, parser = pcall(vim.treesitter.get_parser, 0)
-  6 	if not has_parser or not parser then
+  7 	local has_parser, parser = pcall(vim.treesitter.get_parser, 0)
+  7 	if not has_parser or not parser then
     		-- Fallback to original filetype if no treesitter parser
-  1 		return base_filetype
+  2 		return base_filetype
     	end
 
   5 	local line, col = get_cursor_position()
@@ -279,13 +373,13 @@
     end
 
     -- Main function to detect the current language at cursor position
- 10 function M.detect_language()
-  6 	return detect_language_at_cursor()
+ 11 function M.detect_language()
+  7 	return detect_language_at_cursor()
     end
 
     -- Function to get supported embedded languages for a given filetype
     -- This is now more dynamic - it discovers available injected languages
- 10 function M.get_supported_languages(filetype)
+ 11 function M.get_supported_languages(filetype)
   3 	local languages = { filetype }
 
     	-- Try to get parser and check for injected languages
@@ -313,31 +407,31 @@
   3 	return languages
     end
 
- 10 return M
+ 11 return M
 
 ==============================================================================
 /home/runner/work/code-stats.nvim/code-stats.nvim/lua/maorun/code-stats/pulse.lua
 ==============================================================================
-  8 local pulse = {
-  8 	xps = {},
+ 14 local pulse = {
+ 14 	xps = {},
     }
 
     pulse.addXp = function(lang, amount)
- 24 	pulse.xps[lang] = pulse.getXp(lang) + amount
+ 50 	pulse.xps[lang] = pulse.getXp(lang) + amount
     end
 
     pulse.getXp = function(lang)
- 27 	if pulse.xps[lang] then
- 11 		return pulse.xps[lang]
+ 43 	if pulse.xps[lang] then
+ 18 		return pulse.xps[lang]
     	end
- 16 	return 0
+ 25 	return 0
     end
 
     pulse.reset = function()
-  3 	pulse.xps = {}
+  8 	pulse.xps = {}
     end
 
-  8 return pulse
+ 14 return pulse
 
 ==============================================================================
 Summary
@@ -345,11 +439,11 @@ Summary
 
 File                                                                                           Hits Missed Coverage
 -------------------------------------------------------------------------------------------------------------------
-/home/runner/work/code-stats.nvim/code-stats.nvim/lua/maorun/code-stats/api.lua                9    32     21.95%
+/home/runner/work/code-stats.nvim/code-stats.nvim/lua/maorun/code-stats/api.lua                10   31     24.39%
 /home/runner/work/code-stats.nvim/code-stats.nvim/lua/maorun/code-stats/config.lua             12   1      92.31%
 /home/runner/work/code-stats.nvim/code-stats.nvim/lua/maorun/code-stats/events.lua             11   7      61.11%
-/home/runner/work/code-stats.nvim/code-stats.nvim/lua/maorun/code-stats/init.lua               16   5      76.19%
+/home/runner/work/code-stats.nvim/code-stats.nvim/lua/maorun/code-stats/init.lua               48   20     70.59%
 /home/runner/work/code-stats.nvim/code-stats.nvim/lua/maorun/code-stats/language-detection.lua 48   1      97.96%
 /home/runner/work/code-stats.nvim/code-stats.nvim/lua/maorun/code-stats/pulse.lua              8    0      100.00%
 -------------------------------------------------------------------------------------------------------------------
-Total                                                                                          104  46     69.33%
+Total                                                                                          137  60     69.54%

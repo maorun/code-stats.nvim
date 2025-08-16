@@ -41,6 +41,26 @@ of the buffer
 vim.opt.statusline=vim.opt.statusline + "%{luaeval(\"require('maorun.code-stats').currentXp()\")} "
 ```
 
+## User Commands
+
+The plugin provides several user commands to access XP information:
+
+### `:CodeStatsXP`
+Shows XP for the currently detected language at cursor position.
+
+### `:CodeStatsAll`
+Shows XP for all tracked languages, sorted by XP amount (highest first).
+
+### `:CodeStatsLang <language>`
+Shows XP for a specific language. Supports tab completion with tracked languages.
+
+**Example usage:**
+```vim
+:CodeStatsXP                " Show current language XP
+:CodeStatsAll               " Show all languages with XP
+:CodeStatsLang lua          " Show XP for Lua specifically
+```
+
 ## Ignoring File Types
 
 You can exclude specific file types from XP tracking by specifying them in the `ignored_filetypes` configuration option:

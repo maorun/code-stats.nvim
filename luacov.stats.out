@@ -1,12 +1,12 @@
 84:/home/runner/work/code-stats.nvim/code-stats.nvim/lua/maorun/code-stats/api.lua
-1 1 1 0 1 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 1 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 1 0 0 0 1 0 1 1 1 1 1 
+2 2 2 0 2 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 2 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 2 0 0 8 2 0 2 2 2 2 2 
 23:/home/runner/work/code-stats.nvim/code-stats.nvim/lua/maorun/code-stats/config.lua
-5 0 0 0 5 0 5 0 5 10 0 0 5 7 7 0 0 14 7 7 5 0 5 
+6 0 0 0 6 0 6 0 6 12 0 0 6 13 13 0 0 26 13 13 6 0 6 
 40:/home/runner/work/code-stats.nvim/code-stats.nvim/lua/maorun/code-stats/events.lua
-1 0 0 1 0 2 1 0 0 0 0 0 0 1 0 0 2 1 0 0 0 0 0 1 0 0 2 1 0 0 0 0 0 1 0 2 0 1 1 1 
-41:/home/runner/work/code-stats.nvim/code-stats.nvim/lua/maorun/code-stats/init.lua
-1 1 1 1 1 0 0 0 0 0 0 0 0 0 0 0 1 0 1 0 1 0 10 8 3 0 0 2 3 0 1 1 1 0 0 1 0 0 1 0 1 
+2 0 0 7 0 14 7 0 0 0 0 0 0 7 0 0 14 7 0 0 0 0 0 7 0 0 14 7 0 0 0 0 0 7 0 9 0 2 2 2 
+135:/home/runner/work/code-stats.nvim/code-stats.nvim/lua/maorun/code-stats/init.lua
+7 7 7 7 7 0 0 0 0 0 0 0 0 0 0 0 7 0 0 0 3 0 0 0 1 1 1 7 0 0 0 9 0 0 0 3 3 0 0 9 6 6 0 0 0 0 6 6 3 0 3 1 0 8 6 0 0 4 0 0 3 7 0 0 0 12 0 0 0 4 2 0 0 2 2 7 0 7 0 7 0 23 8 3 0 0 15 22 0 7 7 7 0 0 7 0 0 7 7 7 0 0 7 0 0 14 0 0 7 0 14 0 0 7 0 14 0 0 7 0 0 0 0 0 0 0 0 0 0 0 0 7 0 0 7 
 109:/home/runner/work/code-stats.nvim/code-stats.nvim/lua/maorun/code-stats/language-detection.lua
-10 0 0 0 5 5 10 0 0 0 6 0 0 6 6 0 1 0 0 5 0 0 0 5 5 2 0 2 1 0 0 0 0 0 4 4 0 1 1 1 0 0 0 0 3 4 2 2 0 2 3 2 2 0 0 2 1 0 1 0 0 0 1 0 0 0 0 0 0 0 2 10 0 0 10 6 10 0 0 0 10 3 0 0 3 3 2 4 2 2 0 2 5 3 0 0 0 0 2 2 0 0 0 0 0 3 10 0 10 
+11 0 0 0 5 5 11 0 0 0 7 0 0 7 7 0 2 0 0 5 0 0 0 5 5 2 0 2 1 0 0 0 0 0 4 4 0 1 1 1 0 0 0 0 3 4 2 2 0 2 3 2 2 0 0 2 1 0 1 0 0 0 1 0 0 0 0 0 0 0 2 11 0 0 11 7 11 0 0 0 11 3 0 0 3 3 2 4 2 2 0 2 5 3 0 0 0 0 2 2 0 0 0 0 0 3 11 0 11 
 20:/home/runner/work/code-stats.nvim/code-stats.nvim/lua/maorun/code-stats/pulse.lua
-8 8 0 0 0 24 20 0 0 27 11 0 16 8 0 0 3 11 0 8 
+14 14 0 0 0 50 39 0 0 43 18 0 25 14 0 0 8 22 0 14 
