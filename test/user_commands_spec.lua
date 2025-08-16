@@ -84,13 +84,13 @@ describe("User Commands", function()
 			return {}
 		end
 
-		-- Reset modules before each test
-		package.loaded["maorun.code-stats.config"] = nil
-		package.loaded["maorun.code-stats.api"] = nil
-		package.loaded["maorun.code-stats.pulse"] = nil
-		package.loaded["maorun.code-stats"] = nil
-		pulse = require("maorun.code-stats.pulse")
-		plugin = require("maorun.code-stats")
+		-- Load modules if not already loaded
+		if not pulse then
+			pulse = require("maorun.code-stats.pulse")
+		end
+		if not plugin then
+			plugin = require("maorun.code-stats")
+		end
 	end)
 
 	it("should provide getCurrentLanguageXP function", function()

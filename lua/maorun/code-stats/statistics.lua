@@ -169,7 +169,7 @@ statistics.get_weekly_stats = function(date)
 	local weekday = tonumber(os.date("%w", target_time)) -- 0=Sunday, 1=Monday, etc.
 	local days_since_monday = (weekday == 0) and 6 or (weekday - 1)
 	local week_start = target_time - (days_since_monday * 24 * 60 * 60)
-	local week_end = week_start + (7 * 24 * 60 * 60) - 1
+	local week_end = week_start + (6 * 24 * 60 * 60) -- Add 6 days to get Sunday
 
 	local weekly_xp = {}
 	local total_xp = 0
