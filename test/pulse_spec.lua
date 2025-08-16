@@ -54,12 +54,12 @@ describe("Pulse", function()
 		assert.are.equal(0, pulse.getXp("go"))
 	end)
 
-	it("should handle adding negative XP (if that's considered valid)", function()
-		-- Assuming negative XP could be a use case, e.g. penalties
+	it("should reject negative XP amounts", function()
+		-- Negative XP should be rejected as invalid
 		pulse.addXp("ruby", -5)
-		assert.are.equal(-5, pulse.getXp("ruby"))
+		assert.are.equal(0, pulse.getXp("ruby"))
 		pulse.addXp("ruby", 10)
-		assert.are.equal(5, pulse.getXp("ruby"))
+		assert.are.equal(10, pulse.getXp("ruby"))
 	end)
 
 	it("should save and load XP data (basic persistence)", function()
@@ -93,12 +93,16 @@ describe("Pulse", function()
 				return {
 					write = function(_, data)
 						mock_file_data = data
+						return true
 					end,
 					close = function() end,
 				}
 			elseif mode == "r" and mock_file_data then
 				return {
-					read = function()
+					read = function(_, format)
+						if format == "*all" then
+							return mock_file_data
+						end
 						return mock_file_data
 					end,
 					close = function() end,

@@ -67,11 +67,11 @@ pulse.load = function()
 		return -- No persisted data
 	end
 
-	local content, read_err = pcall(file.read, file, "*all")
+	local success, content = pcall(file.read, file, "*all")
 	file:close()
 
-	if not content then
-		logging.error("Failed to read persistence file: " .. read_err)
+	if not success then
+		logging.error("Failed to read persistence file: " .. content)
 		return
 	end
 
