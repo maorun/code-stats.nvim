@@ -3752,26 +3752,87 @@
 ==============================================================================
 /home/runner/work/code-stats.nvim/code-stats.nvim/lua/maorun/code-stats/pulse.lua
 ==============================================================================
-  7 local pulse = {
-  7 	xps = {},
+  8 local pulse = {
+  8 	xps = {},
     }
 
+    -- Get the path for persisting XP data
+    local function get_persistence_path()
+  5 	local data_dir = vim.fn.stdpath("data")
+  4 	return data_dir .. "/code-stats-xp.json"
+    end
+
+    -- Save XP data to file (only if there are XP values > 0)
+    pulse.save = function()
+  1 	local has_xp = false
+  1 	for _, xp in pairs(pulse.xps) do
+  1 		if xp > 0 then
+  1 			has_xp = true
+  1 			break
+    		end
+    	end
+
+  1 	if not has_xp then
+    		-- Remove persistence file if no XP to save
+**0 		local file_path = get_persistence_path()
+**0 		vim.fn.delete(file_path)
+**0 		return
+    	end
+
+  1 	local file_path = get_persistence_path()
+  1 	local data = vim.fn.json_encode(pulse.xps)
+  1 	local file = io.open(file_path, "w")
+  1 	if file then
+  1 		file:write(data)
+  1 		file:close()
+    	end
+    end
+
+    -- Load XP data from file and merge with current XP
+    pulse.load = function()
+  1 	local file_path = get_persistence_path()
+  1 	local file = io.open(file_path, "r")
+  1 	if not file then
+**0 		return -- No persisted data
+    	end
+
+  1 	local content = file:read("*all")
+  1 	file:close()
+
+  1 	if content and content ~= "" then
+  1 		local ok, loaded_xps = pcall(vim.fn.json_decode, content)
+  1 		if ok and type(loaded_xps) == "table" then
+    			-- Merge loaded XP with current XP
+  2 			for lang, xp in pairs(loaded_xps) do
+  1 				if type(xp) == "number" and xp > 0 then
+  2 					pulse.xps[lang] = pulse.getXp(lang) + xp
+    				end
+    			end
+    			-- Remove the persistence file after loading
+  1 			vim.fn.delete(file_path)
+    		end
+    	end
+    end
+
     pulse.addXp = function(lang, amount)
- 20 	pulse.xps[lang] = pulse.getXp(lang) + amount
+ 22 	pulse.xps[lang] = pulse.getXp(lang) + amount
     end
 
     pulse.getXp = function(lang)
- 20 	if pulse.xps[lang] then
-  9 		return pulse.xps[lang]
+ 23 	if pulse.xps[lang] then
+ 10 		return pulse.xps[lang]
     	end
- 11 	return 0
+ 13 	return 0
     end
 
     pulse.reset = function()
-  1 	pulse.xps = {}
+  2 	pulse.xps = {}
+    	-- Also remove persistence file when resetting
+  2 	local file_path = get_persistence_path()
+  3 	vim.fn.delete(file_path)
     end
 
-  7 return pulse
+  8 return pulse
 
 ==============================================================================
 Summary
@@ -3787,6 +3848,6 @@ File                                                                            
 /home/runner/nvim-nightly/share/nvim/runtime/lua/vim/treesitter/languagetree.lua               50   445    10.10%
 /home/runner/nvim-nightly/share/nvim/runtime/lua/vim/treesitter/query.lua                      40   400    9.09%
 /home/runner/work/code-stats.nvim/code-stats.nvim/lua/maorun/code-stats/language-detection.lua 48   1      97.96%
-/home/runner/work/code-stats.nvim/code-stats.nvim/lua/maorun/code-stats/pulse.lua              8    0      100.00%
+/home/runner/work/code-stats.nvim/code-stats.nvim/lua/maorun/code-stats/pulse.lua              36   4      90.00%
 -------------------------------------------------------------------------------------------------------------------
-Total                                                                                          224  1122   16.64%
+Total                                                                                          252  1126   18.29%
