@@ -2,9 +2,20 @@ describe("Pulse", function()
 	local pulse
 
 	before_each(function()
+		-- Mock vim environment before requiring modules
+		_G.vim = _G.vim or {}
+		_G.vim.fn = _G.vim.fn or {}
+		_G.vim.fn.stdpath = function(what)
+			if what == "data" then
+				return "/tmp"
+			end
+			return "/tmp"
+		end
+
 		-- Reset the pulse module before each test to ensure a clean state
 		-- This is important because Lua modules often retain state.
 		package.loaded["maorun.code-stats.pulse"] = nil
+		package.loaded["maorun.code-stats.logging"] = nil
 		pulse = require("maorun.code-stats.pulse")
 	end)
 

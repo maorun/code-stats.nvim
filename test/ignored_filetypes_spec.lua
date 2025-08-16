@@ -22,6 +22,13 @@ describe("Ignored Filetypes", function()
 			return { 1, 0 }
 		end
 		_G.vim.bo = { filetype = "lua" }
+		_G.vim.fn = _G.vim.fn or {}
+		_G.vim.fn.stdpath = function(what)
+			if what == "data" then
+				return "/tmp"
+			end
+			return "/tmp"
+		end
 		_G.vim.treesitter = {
 			get_parser = function()
 				error("No parser")
@@ -53,6 +60,11 @@ describe("Ignored Filetypes", function()
 				return t
 			end
 		end
+
+		-- Reset modules before each test
+		package.loaded["maorun.code-stats.pulse"] = nil
+		package.loaded["maorun.code-stats"] = nil
+		package.loaded["maorun.code-stats.logging"] = nil
 	end)
 
 	it("should not add XP for ignored filetypes", function()

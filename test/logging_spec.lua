@@ -31,7 +31,10 @@ describe("Logging", function()
 			end
 		end
 		_G.vim.fn = _G.vim.fn or {}
-		_G.vim.fn.stdpath = function()
+		_G.vim.fn.stdpath = function(what)
+			if what == "data" then
+				return "/tmp"
+			end
 			return "/tmp"
 		end
 
