@@ -30,6 +30,11 @@ require('maorun.code-stats').setup({
     api_key = '<YOUR_API_KEY>' -- not necessary if global api key is set
     status_prefix = 'C:S ' -- the prefix of xp in statusline
     ignored_filetypes = {'markdown', 'text'} -- filetypes to ignore from XP tracking
+    logging = {
+        enabled = false, -- Set to true to enable logging
+        level = 'INFO', -- Log level: ERROR, WARN, INFO, DEBUG
+        file_path = nil -- Optional custom log file path (defaults to vim data dir)
+    }
 })
 ```
 
@@ -54,11 +59,18 @@ Shows XP for all tracked languages, sorted by XP amount (highest first).
 ### `:CodeStatsLang <language>`
 Shows XP for a specific language. Supports tab completion with tracked languages.
 
+### `:CodeStatsLog [action]`
+Manage logging functionality:
+- `:CodeStatsLog status` - Show current logging status and log file location
+- `:CodeStatsLog path` - Show log file path
+- `:CodeStatsLog clear` - Clear the log file
+
 **Example usage:**
 ```vim
 :CodeStatsXP                " Show current language XP
 :CodeStatsAll               " Show all languages with XP
 :CodeStatsLang lua          " Show XP for Lua specifically
+:CodeStatsLog status        " Show logging status
 ```
 
 ## Ignoring File Types
@@ -78,6 +90,57 @@ require('maorun.code-stats').setup({
 ```
 
 Changes to the ignored file types take effect immediately without requiring a restart of the editor.
+
+## Logging and Error Handling
+
+The plugin includes comprehensive logging and error handling features to help track plugin activity and diagnose issues.
+
+### Enabling Logging
+
+To enable logging, configure the plugin with logging options:
+
+```lua
+require('maorun.code-stats').setup({
+    api_key = '<YOUR_API_KEY>',
+    logging = {
+        enabled = true,           -- Enable logging
+        level = 'INFO',          -- Log level: ERROR, WARN, INFO, DEBUG
+        file_path = nil          -- Optional: custom log file path
+    }
+})
+```
+
+### Log Levels
+
+- **ERROR**: Critical errors that prevent functionality
+- **WARN**: Warning messages for non-critical issues
+- **INFO**: General information about plugin operations
+- **DEBUG**: Detailed debugging information
+
+### Log File Location
+
+By default, the log file is stored at `{vim.fn.stdpath("data")}/code-stats.log`. You can specify a custom location using the `file_path` option.
+
+### Managing Logs
+
+Use the `:CodeStatsLog` command to manage logging:
+
+```vim
+:CodeStatsLog status        " Show logging status and file location
+:CodeStatsLog path          " Show log file path
+:CodeStatsLog clear         " Clear the log file
+```
+
+### Error Messages
+
+The plugin provides clear, user-friendly error messages for common issues:
+
+- Configuration problems (missing API key, invalid URL)
+- Network connectivity issues
+- File I/O errors for XP persistence
+- JSON parsing errors
+
+Error messages are displayed in the statusline and through notifications, with detailed information logged to the log file when logging is enabled.
 
 
 ## Troubleshooting
