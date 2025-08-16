@@ -1,4 +1,5 @@
 local logging = require("maorun.code-stats.logging")
+local notifications = require("maorun.code-stats.notifications")
 
 local pulse = {
 	xps = {},
@@ -123,8 +124,17 @@ pulse.addXp = function(lang, amount)
 	end
 
 	local old_xp = pulse.getXp(lang)
+	local old_level = pulse.calculateLevel(old_xp)
+
 	pulse.xps[lang] = old_xp + amount
+	local new_level = pulse.calculateLevel(pulse.xps[lang])
+
 	logging.log_xp_operation("ADD", lang, amount, pulse.xps[lang])
+
+	-- Check for level-up and send notification
+	if new_level > old_level then
+		notifications.level_up(lang, new_level)
+	end
 end
 
 pulse.getXp = function(lang)

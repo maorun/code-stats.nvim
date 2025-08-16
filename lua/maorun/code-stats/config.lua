@@ -5,6 +5,13 @@ local defaults = {
 	ignored_filetypes = {},
 	enhanced_statusline = false, -- Show XP, level, and progress in statusline
 	statusline_format = "%s%d (%d%% to L%d)", -- Format: prefix, xp, progress%, next_level
+	notifications = {
+		enabled = true, -- Enable all notifications
+		level_up = {
+			enabled = true, -- Enable level-up notifications
+			message = "🎉 Level Up! %s reached level %d!", -- Format: language, new_level
+		},
+	},
 	logging = {
 		enabled = false,
 		level = "INFO", -- ERROR, WARN, INFO, DEBUG
@@ -14,6 +21,7 @@ local defaults = {
 local config = defaults
 
 local logging = require("maorun.code-stats.logging")
+local notifications = require("maorun.code-stats.notifications")
 
 local M = {
 	config = vim.deepcopy(defaults),
@@ -48,6 +56,9 @@ function M.setup(user_config)
 
 	logging.setup(log_config)
 	logging.log_config("Plugin configured with logging " .. (config.logging.enabled and "enabled" or "disabled"))
+
+	-- Setup notifications with the config
+	notifications.setup(config)
 
 	return config
 end

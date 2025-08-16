@@ -112,4 +112,52 @@ describe("Config", function()
 		assert.are.equal(true, result.enhanced_statusline)
 		assert.are.equal("Custom: %s%d L%d (%d%%)", result.statusline_format)
 	end)
+
+	describe("notifications configuration", function()
+		it("should have default notifications enabled", function()
+			local result = config.setup()
+			assert.are.equal(true, result.notifications.enabled)
+			assert.are.equal(true, result.notifications.level_up.enabled)
+			assert.are.equal("🎉 Level Up! %s reached level %d!", result.notifications.level_up.message)
+		end)
+
+		it("should allow disabling notifications", function()
+			local result = config.setup({
+				notifications = { enabled = false },
+			})
+			assert.are.equal(false, result.notifications.enabled)
+		end)
+
+		it("should allow disabling level-up notifications specifically", function()
+			local result = config.setup({
+				notifications = {
+					enabled = true,
+					level_up = { enabled = false },
+				},
+			})
+			assert.are.equal(true, result.notifications.enabled)
+			assert.are.equal(false, result.notifications.level_up.enabled)
+		end)
+
+		it("should allow custom level-up message", function()
+			local custom_message = "Custom: %s advanced to level %d!"
+			local result = config.setup({
+				notifications = {
+					level_up = { message = custom_message },
+				},
+			})
+			assert.are.equal(custom_message, result.notifications.level_up.message)
+		end)
+
+		it("should preserve other config options when setting notifications", function()
+			local result = config.setup({
+				api_key = "test_key",
+				status_prefix = "TEST ",
+				notifications = { enabled = false },
+			})
+			assert.are.equal("test_key", result.api_key)
+			assert.are.equal("TEST ", result.status_prefix)
+			assert.are.equal(false, result.notifications.enabled)
+		end)
+	end)
 end)

@@ -193,4 +193,68 @@ describe("Pulse", function()
 			assert.are.equal(16, pulse.getProgressToNextLevel("javascript"))
 		end)
 	end)
+
+	-- Test level-up notifications
+	describe("Level-up notifications", function()
+		local notifications_called = {}
+
+		before_each(function()
+			notifications_called = {}
+			-- Mock the notifications module
+			package.loaded["maorun.code-stats.notifications"] = {
+				level_up = function(lang, level)
+					table.insert(notifications_called, { lang = lang, level = level })
+				end,
+			}
+			-- Reload pulse to use the mocked notifications
+			package.loaded["maorun.code-stats.pulse"] = nil
+			pulse = require("maorun.code-stats.pulse")
+		end)
+
+		it("should trigger notification when leveling up from 1 to 2", function()
+			-- Level 1: 0-99 XP, Level 2: 100+ XP
+			pulse.addXp("lua", 100)
+			assert.are.equal(1, #notifications_called)
+			assert.are.equal("lua", notifications_called[1].lang)
+			assert.are.equal(2, notifications_called[1].level)
+		end)
+
+		it("should trigger notification when leveling up from 2 to 3", function()
+			-- Level 2: 100-399 XP, Level 3: 400+ XP
+			pulse.addXp("python", 400)
+			assert.are.equal(1, #notifications_called)
+			assert.are.equal("python", notifications_called[1].lang)
+			assert.are.equal(3, notifications_called[1].level)
+		end)
+
+		it("should not trigger notification when not leveling up", function()
+			pulse.addXp("javascript", 50) -- Still level 1
+			assert.are.equal(0, #notifications_called)
+		end)
+
+		it("should trigger notification only once per level-up", function()
+			pulse.addXp("go", 50) -- Level 1, no notification
+			assert.are.equal(0, #notifications_called)
+
+			pulse.addXp("go", 50) -- Level 2, should trigger notification
+			assert.are.equal(1, #notifications_called)
+			assert.are.equal(2, notifications_called[1].level)
+
+			pulse.addXp("go", 50) -- Still level 2, no additional notification
+			assert.are.equal(1, #notifications_called)
+		end)
+
+		it("should handle multiple languages independently", function()
+			pulse.addXp("rust", 100) -- Level 2
+			pulse.addXp("typescript", 400) -- Level 3
+
+			assert.are.equal(2, #notifications_called)
+			-- Check first notification
+			assert.are.equal("rust", notifications_called[1].lang)
+			assert.are.equal(2, notifications_called[1].level)
+			-- Check second notification
+			assert.are.equal("typescript", notifications_called[2].lang)
+			assert.are.equal(3, notifications_called[2].level)
+		end)
+	end)
 end)
