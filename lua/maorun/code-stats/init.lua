@@ -195,6 +195,25 @@ end, {
 	end,
 })
 
+-- Add user command for manual XP synchronization
+vim.api.nvim_create_user_command("CodeStatsXpSend", function()
+	local error_msg = api.get_error()
+
+	-- Clear any previous error before sending
+	api.pulseSend()
+
+	-- Check for errors after sending
+	local new_error_msg = api.get_error()
+
+	if string.len(new_error_msg) > 0 then
+		vim.notify("Code::Stats Error: " .. new_error_msg, vim.log.levels.ERROR, { title = "Code::Stats" })
+		logging.error("User command CodeStatsXpSend failed: " .. new_error_msg)
+	else
+		vim.notify("XP data successfully sent to Code::Stats", vim.log.levels.INFO, { title = "Code::Stats" })
+		logging.debug("User command CodeStatsXpSend executed successfully")
+	end
+end, { desc = "Send all pending XP to Code::Stats immediately" })
+
 logging.log_init("User commands created successfully")
 logging.log_init("Code::Stats plugin initialization complete")
 
