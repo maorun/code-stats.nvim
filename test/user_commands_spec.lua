@@ -85,6 +85,8 @@ describe("User Commands", function()
 		end
 
 		-- Reset modules before each test
+		package.loaded["maorun.code-stats.config"] = nil
+		package.loaded["maorun.code-stats.api"] = nil
 		package.loaded["maorun.code-stats.pulse"] = nil
 		package.loaded["maorun.code-stats"] = nil
 		pulse = require("maorun.code-stats.pulse")
@@ -196,30 +198,35 @@ describe("User Commands", function()
 			end,
 		}
 
-		plugin.setup({ api_key = "test" })
+		plugin.setup({ api_key = "test", api_url = "https://codestats.net/", status_prefix = "CS " })
 
-		-- Mock vim.notify to capture the output
-		local notify_called = false
-		local notify_message = ""
-		_G.vim.notify = function(msg, level, opts)
-			notify_called = true
-			notify_message = msg
-		end
+		-- Variables to capture callback results
+		local callback_called = false
+		local callback_profile_data = nil
+		local callback_error_msg = nil
 
-		-- Mock the profile command execution
+		-- Require API module after mock is set up
+		package.loaded["maorun.code-stats.api"] = nil
 		local api = require("maorun.code-stats.api")
-		api.getProfile(function(profile_data, error_msg)
-			assert.is.falsy(error_msg)
-			assert.is.truthy(profile_data)
 
-			-- Parse the JSON response
-			local ok, profile = pcall(_G.vim.fn.json_decode, profile_data)
-			assert.is.truthy(ok)
-			assert.is.truthy(profile.user)
-			assert.are.equal("testuser", profile.user.username)
-			assert.are.equal(12345, profile.total_xp)
-			assert.are.equal(25, profile.level)
+		api.getProfile(function(profile_data, error_msg)
+			callback_called = true
+			callback_profile_data = profile_data
+			callback_error_msg = error_msg
 		end)
+
+		-- Verify the callback was called and results are correct
+		assert.is.truthy(callback_called)
+		assert.is.falsy(callback_error_msg)
+		assert.is.truthy(callback_profile_data)
+
+		-- Parse the JSON response
+		local ok, profile = pcall(_G.vim.fn.json_decode, callback_profile_data)
+		assert.is.truthy(ok)
+		assert.is.truthy(profile.user)
+		assert.are.equal("testuser", profile.user.username)
+		assert.are.equal(12345, profile.total_xp)
+		assert.are.equal(25, profile.level)
 
 		-- Restore original curl mock
 		package.loaded["plenary.curl"] = original_curl
@@ -237,15 +244,28 @@ describe("User Commands", function()
 			end,
 		}
 
-		plugin.setup({ api_key = "test" })
+		plugin.setup({ api_key = "test", api_url = "https://codestats.net/", status_prefix = "CS " })
 
-		-- Test error handling
+		-- Variables to capture callback results
+		local callback_called = false
+		local callback_profile_data = nil
+		local callback_error_msg = nil
+
+		-- Require API module after mock is set up
+		package.loaded["maorun.code-stats.api"] = nil
 		local api = require("maorun.code-stats.api")
+
 		api.getProfile(function(profile_data, error_msg)
-			assert.is.falsy(profile_data)
-			assert.is.truthy(error_msg)
-			assert.is.truthy(string.match(error_msg, "Network error"))
+			callback_called = true
+			callback_profile_data = profile_data
+			callback_error_msg = error_msg
 		end)
+
+		-- Verify the callback was called and error is correct
+		assert.is.truthy(callback_called)
+		assert.is.falsy(callback_profile_data)
+		assert.is.truthy(callback_error_msg)
+		assert.is.truthy(string.match(callback_error_msg, "Network error"))
 
 		-- Restore original curl mock
 		package.loaded["plenary.curl"] = original_curl
