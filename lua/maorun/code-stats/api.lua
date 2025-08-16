@@ -112,9 +112,83 @@ local function get_error()
 	return error_message
 end
 
+local function getProfile(callback)
+	logging.debug("Starting profile request operation")
+
+	-- Check if config is initialized by checking essential string fields
+	local config_values = {
+		cs_config.config.status_prefix,
+		cs_config.config.api_url,
+		cs_config.config.api_key,
+	}
+	if string.len(table.concat(config_values)) == 0 then
+		local error_msg = "Code::Stats plugin not properly configured"
+		logging.error("Plugin configuration incomplete - missing essential settings")
+		if callback then
+			callback(nil, error_msg)
+		end
+		return
+	end
+
+	local url = cs_config.config.api_url
+	if string.len(url) == 0 then
+		local error_msg = "Code::Stats API URL not configured"
+		logging.error("Missing API URL configuration")
+		if callback then
+			callback(nil, error_msg)
+		end
+		return
+	end
+
+	if string.len(cs_config.config.api_key) == 0 then
+		local error_msg = "Code::Stats API key not configured"
+		logging.error("Missing API key configuration")
+		if callback then
+			callback(nil, error_msg)
+		end
+		return
+	end
+
+	local full_url = url .. "api/my/profile"
+	logging.debug("Attempting profile API request to " .. full_url)
+
+	return curl.request({
+		url = full_url,
+		method = "GET",
+		headers = {
+			["X-API-Token"] = cs_config.config.api_key,
+			["Accept"] = "application/json",
+		},
+		on_error = function(data)
+			local error_details = data.message or "Unknown network error"
+			local error_msg = "Unable to retrieve profile from Code::Stats server: " .. error_details
+			logging.log_api_request(full_url, "GET", false, error_details)
+			if callback then
+				callback(nil, error_msg)
+			end
+		end,
+		callback = function(response)
+			if response.status >= 200 and response.status < 300 then
+				logging.log_api_request(full_url, "GET", true)
+				logging.info("Profile data successfully retrieved from Code::Stats")
+				if callback then
+					callback(response.body, nil)
+				end
+			else
+				local error_msg = "Code::Stats server error (HTTP " .. response.status .. ")"
+				logging.log_api_request(full_url, "GET", false, "HTTP " .. response.status)
+				if callback then
+					callback(nil, error_msg)
+				end
+			end
+		end,
+	})
+end
+
 return {
 	pulseSend = pulseSend,
 	pulseSendOnExit = pulseSendOnExit,
 	requestToApi = requestToApi,
 	get_error = get_error,
+	getProfile = getProfile,
 }

@@ -248,6 +248,58 @@ vim.api.nvim_create_user_command("CodeStatsXpSend", function()
 	end
 end, { desc = "Send all pending XP to Code::Stats immediately" })
 
+-- Add user command for profile display
+vim.api.nvim_create_user_command("CodeStatsProfile", function()
+	api.getProfile(function(profile_data, error_msg)
+		if error_msg then
+			vim.notify("Code::Stats Error: " .. error_msg, vim.log.levels.ERROR, { title = "Code::Stats" })
+			logging.error("User command CodeStatsProfile failed: " .. error_msg)
+		elseif profile_data then
+			-- Parse the JSON response
+			local ok, profile = pcall(vim.fn.json_decode, profile_data)
+			if not ok then
+				vim.notify(
+					"Code::Stats Error: Invalid profile data received",
+					vim.log.levels.ERROR,
+					{ title = "Code::Stats" }
+				)
+				logging.error("User command CodeStatsProfile failed: JSON decode error")
+				return
+			end
+
+			-- Format and display profile information
+			local info = "Code::Stats Profile:\n"
+			if profile.user then
+				info = info .. "User: " .. (profile.user.username or "Unknown") .. "\n"
+			end
+			if profile.total_xp then
+				info = info .. "Total XP: " .. profile.total_xp .. "\n"
+			end
+			if profile.level then
+				info = info .. "Level: " .. profile.level .. "\n"
+			end
+			if profile.languages and type(profile.languages) == "table" then
+				info = info .. "Top Languages:\n"
+				-- Show top 5 languages if available
+				local count = 0
+				for lang, xp in pairs(profile.languages) do
+					if count >= 5 then
+						break
+					end
+					info = info .. "  " .. lang .. ": " .. xp .. " XP\n"
+					count = count + 1
+				end
+			end
+
+			vim.notify(info, vim.log.levels.INFO, { title = "Code::Stats" })
+			logging.debug("User command CodeStatsProfile executed successfully")
+		else
+			vim.notify("Code::Stats Error: No profile data received", vim.log.levels.ERROR, { title = "Code::Stats" })
+			logging.error("User command CodeStatsProfile failed: No data received")
+		end
+	end)
+end, { desc = "Show Code::Stats profile information" })
+
 logging.log_init("User commands created successfully")
 logging.log_init("Code::Stats plugin initialization complete")
 

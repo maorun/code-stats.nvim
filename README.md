@@ -101,6 +101,14 @@ Manually send all pending XP to Code::Stats immediately. This command provides:
 - Success confirmation when XP is sent successfully
 - Error messages if transmission fails (network issues, invalid API key, etc.)
 
+### `:CodeStatsProfile`
+Displays your Code::Stats profile information from the server, including:
+- Username
+- Total XP across all languages
+- Current level
+- Top languages with XP amounts
+- Error messages if retrieval fails (network issues, invalid API key, etc.)
+
 ### `:CodeStatsLog [action]`
 Manage logging functionality:
 - `:CodeStatsLog status` - Show current logging status and log file location
@@ -113,6 +121,7 @@ Manage logging functionality:
 :CodeStatsAll               " Show all languages with XP
 :CodeStatsLang lua          " Show XP for Lua specifically
 :CodeStatsXpSend            " Send all pending XP immediately
+:CodeStatsProfile           " Show your Code::Stats profile from server
 :CodeStatsLog status        " Show logging status
 ```
 
