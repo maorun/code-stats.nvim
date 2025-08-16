@@ -59,6 +59,12 @@ Shows XP for all tracked languages, sorted by XP amount (highest first).
 ### `:CodeStatsLang <language>`
 Shows XP for a specific language. Supports tab completion with tracked languages.
 
+### `:CodeStatsXpSend`
+Manually send all pending XP to Code::Stats immediately. This command provides:
+- Immediate transmission of all tracked XP data
+- Success confirmation when XP is sent successfully
+- Error messages if transmission fails (network issues, invalid API key, etc.)
+
 ### `:CodeStatsLog [action]`
 Manage logging functionality:
 - `:CodeStatsLog status` - Show current logging status and log file location
@@ -70,6 +76,7 @@ Manage logging functionality:
 :CodeStatsXP                " Show current language XP
 :CodeStatsAll               " Show all languages with XP
 :CodeStatsLang lua          " Show XP for Lua specifically
+:CodeStatsXpSend            " Send all pending XP immediately
 :CodeStatsLog status        " Show logging status
 ```
 
