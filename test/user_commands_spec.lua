@@ -158,4 +158,20 @@ describe("User Commands", function()
 		local result = plugin.getAllLanguagesXP()
 		assert.is.truthy(string.match(result, "No XP tracked yet"))
 	end)
+
+	it("should provide pulseSend function for manual synchronization", function()
+		plugin.setup({ api_key = "test" })
+		pulse.reset()
+
+		plugin.add("lua")
+		plugin.add("javascript")
+
+		-- Verify that pulseSend function exists and can be called
+		assert.is.function(plugin.pulseSend)
+
+		-- Call pulseSend and verify no errors
+		plugin.pulseSend()
+		local error_msg = plugin.getError()
+		assert.are.equal("", error_msg)
+	end)
 end)
