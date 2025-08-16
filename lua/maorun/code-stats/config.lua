@@ -2,6 +2,7 @@ local defaults = {
 	status_prefix = "C:S ",
 	api_url = "https://codestats.net/",
 	api_key = "",
+	ignored_filetypes = {},
 }
 local config = defaults
 

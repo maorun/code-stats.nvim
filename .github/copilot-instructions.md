@@ -56,7 +56,8 @@ _G.vim = {
         nvim_create_autocmd = function(events) 
             local event_str = type(events) == 'table' and table.concat(events, ', ') or events
             print('Created autocmd for events:', event_str)
-        end 
+        end,
+        nvim_win_get_cursor = function() return {1, 0} end
     },
     fn = { 
         map = function(t, fn) 
@@ -70,7 +71,12 @@ _G.vim = {
     },
     tbl_values = function(t) local v={}; for _,val in pairs(t) do table.insert(v,val) end; return v end,
     tbl_deep_extend = function(m,...) local r={}; for _,tbl in ipairs({...}) do for k,v in pairs(tbl) do r[k]=v end end; return r end,
-    deepcopy = function(t) return type(t)=='table' and t or t end
+    deepcopy = function(t) return type(t)=='table' and t or t end,
+    treesitter = {
+        get_parser = function() 
+            error('No parser available') -- This will be caught by pcall
+        end
+    }
 }
 package.loaded['plenary.curl'] = { 
     request = function(opts) 

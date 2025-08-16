@@ -29,6 +29,7 @@ now setup the plugin
 require('maorun.code-stats').setup({
     api_key = '<YOUR_API_KEY>' -- not necessary if global api key is set
     status_prefix = 'C:S ' -- the prefix of xp in statusline
+    ignored_filetypes = {'markdown', 'text'} -- filetypes to ignore from XP tracking
 })
 ```
 
@@ -39,6 +40,24 @@ of the buffer
 ```lua
 vim.opt.statusline=vim.opt.statusline + "%{luaeval(\"require('maorun.code-stats').currentXp()\")} "
 ```
+
+## Ignoring File Types
+
+You can exclude specific file types from XP tracking by specifying them in the `ignored_filetypes` configuration option:
+
+```lua
+require('maorun.code-stats').setup({
+    api_key = '<YOUR_API_KEY>',
+    ignored_filetypes = {
+        'markdown',    -- Don't track XP for markdown files
+        'text',        -- Don't track XP for text files  
+        'gitcommit',   -- Don't track XP for git commit messages
+        'log'          -- Don't track XP for log files
+    }
+})
+```
+
+Changes to the ignored file types take effect immediately without requiring a restart of the editor.
 
 
 ## Troubleshooting

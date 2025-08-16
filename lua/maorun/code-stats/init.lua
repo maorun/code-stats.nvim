@@ -19,6 +19,12 @@ end
 local M = {}
 
 function M.add(filetype)
+	-- Check if filetype is in ignored list
+	for _, ignored_type in ipairs(cs_config.config.ignored_filetypes) do
+		if filetype == ignored_type then
+			return -- Don't add XP for ignored filetypes
+		end
+	end
 	pulse.addXp(filetype, 1)
 end
 
