@@ -2,6 +2,36 @@ describe("Config", function()
 	local config
 
 	before_each(function()
+		-- Mock vim environment before requiring modules
+		_G.vim = _G.vim or {}
+		_G.vim.g = {}
+		_G.vim.tbl_deep_extend = function(mode, ...)
+			local result = {}
+			for _, tbl in ipairs({ ... }) do
+				if type(tbl) == "table" then
+					for k, v in pairs(tbl) do
+						if type(v) == "table" then
+							result[k] = _G.vim.deepcopy(v)
+						else
+							result[k] = v
+						end
+					end
+				end
+			end
+			return result
+		end
+		_G.vim.deepcopy = function(t)
+			if type(t) == "table" then
+				local copy = {}
+				for k, v in pairs(t) do
+					copy[k] = _G.vim.deepcopy(v)
+				end
+				return copy
+			else
+				return t
+			end
+		end
+
 		-- Reset the config module before each test
 		package.loaded["maorun.code-stats.config"] = nil
 		config = require("maorun.code-stats.config")
