@@ -9,6 +9,7 @@ Table of Contents                          *code-stats.nvim-table-of-contents*
   - Statusline     |code-stats.nvim-code::stats-integration-in-lua-statusline|
   - User Commands|code-stats.nvim-code::stats-integration-in-lua-user-commands|
   - Ignoring File Types|code-stats.nvim-code::stats-integration-in-lua-ignoring-file-types|
+  - Logging and Error Handling|code-stats.nvim-code::stats-integration-in-lua-logging-and-error-handling|
   - Troubleshooting|code-stats.nvim-code::stats-integration-in-lua-troubleshooting|
 
 ==============================================================================
@@ -56,7 +57,7 @@ now setup the plugin
         logging = {
             enabled = false, -- Set to true to enable logging
             level = 'INFO', -- Log level: ERROR, WARN, INFO, DEBUG
-            file_path = nil -- Optional custom log file path
+            file_path = nil -- Optional custom log file path (defaults to vim data dir)
         }
     })
 <
@@ -85,19 +86,15 @@ next level:
     })
 <
 
-The enhanced statusline displays:
-- Current XP for the active language
-- Current level (calculated from XP)
-- Progress percentage to the next level
-- Next level number
+The enhanced statusline displays: - Current XP for the active language -
+Current level (calculated from XP) - Progress percentage to the next level -
+Next level number
 
-Format placeholders:
-- `%s` - Status prefix (default: "C:S ")
-- First `%d` - Current XP
-- Second `%d` - Progress percentage (0-100)
-- Third `%d` - Next level number
+**Format placeholders:** - `%s` - Status prefix (default: "C:S") - First `%d` -
+Current XP - Second `%d` - Progress percentage (0-100) - Third `%d` - Next
+level number
 
-Example output: `C:S 250 (25% to L3)` (250 XP, 25% progress to level 3)
+**Example output:** `C:S 250 (25% to L3)` (250 XP, 25% progress to level 3)
 
 You can also use the enhanced function directly:
 
@@ -105,9 +102,8 @@ You can also use the enhanced function directly:
     vim.opt.statusline=vim.opt.statusline + "%{luaeval(\"require('maorun.code-stats').currentXpEnhanced()\")} "
 <
 
-Level Calculation: Levels are calculated using the formula 
-`Level = floor(sqrt(XP / 100)) + 1`, where each level requires progressively 
-more XP.
+**Level Calculation:** Levels are calculated using the formula `Level =
+floor(sqrt(XP / 100)) + 1`, where each level requires progressively more XP.
 
 
 USER COMMANDS   *code-stats.nvim-code::stats-integration-in-lua-user-commands*
@@ -130,12 +126,37 @@ Shows XP for all tracked languages, sorted by XP amount (highest first).
 Shows XP for a specific language. Supports tab completion with tracked
 languages.
 
+
+:CODESTATSXPSEND ~
+
+Manually send all pending XP to Code::Stats immediately. This command provides:
+- Immediate transmission of all tracked XP data - Success confirmation when XP
+is sent successfully - Error messages if transmission fails (network issues,
+invalid API key, etc.)
+
+
+:CODESTATSPROFILE ~
+
+Displays your Code::Stats profile information from the server, including: -
+Username - Total XP across all languages - Current level - Top languages with
+XP amounts - Error messages if retrieval fails (network issues, invalid API
+key, etc.)
+
+
+:CODESTATSLOG [ACTION] ~
+
+Manage logging functionality: - `:CodeStatsLog status` - Show current logging
+status and log file location - `:CodeStatsLog path` - Show log file path -
+`:CodeStatsLog clear` - Clear the log file
+
 **Example usage:**
 
 >vim
     :CodeStatsXP                " Show current language XP
     :CodeStatsAll               " Show all languages with XP
     :CodeStatsLang lua          " Show XP for Lua specifically
+    :CodeStatsXpSend            " Send all pending XP immediately
+    :CodeStatsProfile           " Show your Code::Stats profile from server
     :CodeStatsLog status        " Show logging status
 <
 
@@ -166,7 +187,8 @@ LOGGING AND ERROR HANDLING*code-stats.nvim-code::stats-integration-in-lua-loggin
 The plugin includes comprehensive logging and error handling features to help
 track plugin activity and diagnose issues.
 
-Enabling Logging~
+
+ENABLING LOGGING ~
 
 To enable logging, configure the plugin with logging options:
 
@@ -181,19 +203,23 @@ To enable logging, configure the plugin with logging options:
     })
 <
 
-Log Levels~
 
-- ERROR: Critical errors that prevent functionality
-- WARN: Warning messages for non-critical issues  
-- INFO: General information about plugin operations
-- DEBUG: Detailed debugging information
+LOG LEVELS ~
 
-Log File Location~
+- **ERROR**: Critical errors that prevent functionality
+- **WARN**: Warning messages for non-critical issues
+- **INFO**: General information about plugin operations
+- **DEBUG**: Detailed debugging information
 
-By default, the log file is stored at `{vim.fn.stdpath("data")}/code-stats.log`.
-You can specify a custom location using the `file_path` option.
 
-Managing Logs~
+LOG FILE LOCATION ~
+
+By default, the log file is stored at
+`{vim.fn.stdpath("data")}/code-stats.log`. You can specify a custom location
+using the `file_path` option.
+
+
+MANAGING LOGS ~
 
 Use the `:CodeStatsLog` command to manage logging:
 
@@ -203,13 +229,14 @@ Use the `:CodeStatsLog` command to manage logging:
     :CodeStatsLog clear         " Clear the log file
 <
 
-Error Messages~
+
+ERROR MESSAGES ~
 
 The plugin provides clear, user-friendly error messages for common issues:
 
 - Configuration problems (missing API key, invalid URL)
 - Network connectivity issues
-- File I/O errors for XP persistence  
+- File I/O errors for XP persistence
 - JSON parsing errors
 
 Error messages are displayed in the statusline and through notifications, with
