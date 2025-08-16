@@ -4,6 +4,7 @@ local api = require("maorun.code-stats.api")
 local events = require("maorun.code-stats.events")
 local lang_detection = require("maorun.code-stats.language-detection")
 local logging = require("maorun.code-stats.logging")
+local statistics = require("maorun.code-stats.statistics")
 
 -- Load any persisted XP data from previous sessions
 logging.log_init("Loading persisted XP data")
@@ -299,6 +300,56 @@ vim.api.nvim_create_user_command("CodeStatsProfile", function()
 		end
 	end)
 end, { desc = "Show Code::Stats profile information" })
+
+-- Add user command for daily statistics
+vim.api.nvim_create_user_command("CodeStatsDaily", function(opts)
+	local date = opts.args and opts.args ~= "" and opts.args or nil
+	local daily_stats = statistics.get_daily_stats(date)
+	local formatted = statistics.format_daily_stats(daily_stats)
+
+	vim.notify(formatted, vim.log.levels.INFO, { title = "Code::Stats" })
+	logging.debug("User command CodeStatsDaily executed for date: " .. (date or "today"))
+end, {
+	nargs = "?",
+	desc = "Show daily XP statistics (optional: YYYY-MM-DD)",
+})
+
+-- Add user command for weekly statistics
+vim.api.nvim_create_user_command("CodeStatsWeekly", function(opts)
+	local date = opts.args and opts.args ~= "" and opts.args or nil
+	local weekly_stats = statistics.get_weekly_stats(date)
+	local formatted = statistics.format_weekly_stats(weekly_stats)
+
+	vim.notify(formatted, vim.log.levels.INFO, { title = "Code::Stats" })
+	logging.debug("User command CodeStatsWeekly executed for date: " .. (date or "current week"))
+end, {
+	nargs = "?",
+	desc = "Show weekly XP statistics (optional: YYYY-MM-DD)",
+})
+
+-- Add user command for monthly statistics
+vim.api.nvim_create_user_command("CodeStatsMonthly", function(opts)
+	local year, month = nil, nil
+	if opts.args and opts.args ~= "" then
+		-- Parse YYYY-MM format
+		local parts = vim.split(opts.args, "-")
+		if #parts >= 1 then
+			year = tonumber(parts[1])
+		end
+		if #parts >= 2 then
+			month = tonumber(parts[2])
+		end
+	end
+
+	local monthly_stats = statistics.get_monthly_stats(year, month)
+	local formatted = statistics.format_monthly_stats(monthly_stats)
+
+	vim.notify(formatted, vim.log.levels.INFO, { title = "Code::Stats" })
+	logging.debug("User command CodeStatsMonthly executed for: " .. (opts.args or "current month"))
+end, {
+	nargs = "?",
+	desc = "Show monthly XP statistics (optional: YYYY-MM)",
+})
 
 logging.log_init("User commands created successfully")
 logging.log_init("Code::Stats plugin initialization complete")

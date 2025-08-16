@@ -1,5 +1,6 @@
 local logging = require("maorun.code-stats.logging")
 local notifications = require("maorun.code-stats.notifications")
+local utils = require("maorun.code-stats.utils")
 
 local pulse = {
 	xps = {},
@@ -131,6 +132,12 @@ pulse.addXp = function(lang, amount)
 
 	logging.log_xp_operation("ADD", lang, amount, pulse.xps[lang])
 
+	-- Add to historical tracking for statistics (lazy load to avoid circular dependency)
+	local ok, statistics = pcall(require, "maorun.code-stats.statistics")
+	if ok then
+		statistics.add_history_entry(lang, amount)
+	end
+
 	-- Check for level-up and send notification
 	if new_level > old_level then
 		notifications.level_up(lang, new_level)
@@ -144,21 +151,14 @@ pulse.getXp = function(lang)
 	return 0
 end
 
--- Calculate level from XP using standard gaming formula
--- Level = floor(sqrt(XP / 100)) + 1
+-- Calculate level from XP using shared utility function
 pulse.calculateLevel = function(xp)
-	if not xp or xp <= 0 then
-		return 1
-	end
-	return math.floor(math.sqrt(xp / 100)) + 1
+	return utils.calculateLevel(xp)
 end
 
 -- Calculate XP required for a specific level
 pulse.calculateXpForLevel = function(level)
-	if not level or level <= 1 then
-		return 0
-	end
-	return (level - 1) * (level - 1) * 100
+	return utils.calculateXpForLevel(level)
 end
 
 -- Calculate progress to next level as a percentage (0-100)
