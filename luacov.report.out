@@ -1,0 +1,528 @@
+==============================================================================
+/home/runner/work/code-stats.nvim/code-stats.nvim/lua/maorun/code-stats/api.lua
+==============================================================================
+  2 local curl = require("plenary.curl")
+  2 local pulse = require("maorun.code-stats.pulse")
+  2 local cs_config = require("maorun.code-stats.config")
+
+  2 local error_message = ""
+  2 local is_vim_leaving = false
+
+    local function requestToApi(body)
+**0 	local url = cs_config.config.api_url
+
+**0 	return curl.request({
+    		url = url .. "api/my/pulses/",
+    		method = "POST",
+**0 		headers = {
+    			["X-API-Token"] = cs_config.config.api_key,
+    			["Content-Type"] = "application/json",
+    			["Accept"] = "application/json",
+    		},
+    		body = body,
+    		on_error = function(data)
+**0 			error_message = "could not send request to code-stats: " .. data.message
+    			-- If we're leaving vim and there's an error, persist the XP data
+**0 			if is_vim_leaving then
+**0 				pulse.save()
+    			end
+    		end,
+    		callback = function()
+**0 			error_message = ""
+**0 			pulse.reset()
+    		end,
+    	})
+    end
+
+    local function pulseSend()
+    	-- Check if config is initialized by checking essential string fields
+**0 	local config_values = {
+**0 		cs_config.config.status_prefix,
+**0 		cs_config.config.api_url,
+**0 		cs_config.config.api_key,
+    	}
+**0 	if string.len(table.concat(config_values)) == 0 then
+**0 		error_message = cs_config.config.status_prefix .. "Not Initialized"
+    		-- Early return if not initialized, to prevent further checks if config is empty
+**0 		if string.len(error_message) > 0 then
+**0 			return
+    		end
+    	end
+
+**0 	local url = cs_config.config.api_url
+**0 	if string.len(url) == 0 then
+**0 		error_message = "no API-URL given"
+**0 		if string.len(error_message) > 0 then
+**0 			return
+    		end
+    	end
+**0 	if string.len(cs_config.config.api_key) == 0 then
+**0 		error_message = "no api-key given"
+**0 		if string.len(error_message) > 0 then
+**0 			return
+    		end
+    	end
+
+    	-- If there was an error message set by previous checks, clear it if we proceed
+**0 	error_message = ""
+
+**0 	local languages = vim.fn.map(pulse.xps, function(language, xp)
+**0 		if xp > 0 then
+**0 			return '{"language": "' .. language .. '", "xp": ' .. xp .. "}"
+    		else
+**0 			return ""
+    		end
+    	end)
+
+**0 	local xps = table.concat(vim.tbl_values(languages), ",")
+
+**0 	if string.len(xps) > 0 then
+**0 		requestToApi('{ "coded_at": "' .. os.date("%Y-%m-%dT%X%z") .. '", "xps": [ ' .. xps .. " ] }")
+**0 	elseif is_vim_leaving then
+    		-- If we're leaving vim but have no XP to send, still clean up any persistence file
+**0 		pulse.reset()
+    	end
+    end
+
+    local function pulseSendOnExit()
+**0 	is_vim_leaving = true
+**0 	pulseSend()
+**0 	is_vim_leaving = false
+    end
+
+    local function get_error()
+  8 	return error_message
+    end
+
+  2 return {
+  2 	pulseSend = pulseSend,
+  2 	pulseSendOnExit = pulseSendOnExit,
+  2 	requestToApi = requestToApi,
+  2 	get_error = get_error,
+  2 }
+
+==============================================================================
+/home/runner/work/code-stats.nvim/code-stats.nvim/lua/maorun/code-stats/config.lua
+==============================================================================
+  6 local defaults = {
+    	status_prefix = "C:S ",
+    	api_url = "https://codestats.net/",
+    	api_key = "",
+  6 	ignored_filetypes = {},
+    }
+  6 local config = defaults
+
+  6 local M = {
+ 12 	config = vim.deepcopy(defaults),
+    }
+
+  6 function M.setup(user_config)
+ 13 	local globalConfig = {}
+ 13 	if vim.g.codestats_api_key then
+**0 		globalConfig.api_key = vim.g.codestats_api_key
+    	end
+ 26 	config = vim.tbl_deep_extend("force", defaults, user_config or {}, globalConfig)
+ 13 	M.config = config
+ 13 	return config
+    end
+
+  6 return M
+
+==============================================================================
+/home/runner/work/code-stats.nvim/code-stats.nvim/lua/maorun/code-stats/events.lua
+==============================================================================
+  2 local lang_detection = require("maorun.code-stats.language-detection")
+
+    local function setup_autocommands(add_xp_callback, pulse_send_callback, pulse_send_on_exit_callback)
+  7 	local group = vim.api.nvim_create_augroup("codestats_track", { clear = true })
+
+ 14 	vim.api.nvim_create_autocmd({ "InsertCharPre", "TextChanged" }, {
+  7 		group = group,
+    		pattern = "*",
+    		callback = function()
+**0 			if add_xp_callback then
+**0 				local detected_lang = lang_detection.detect_language()
+**0 				add_xp_callback(detected_lang)
+    			end
+    		end,
+    	})
+
+ 14 	vim.api.nvim_create_autocmd("VimLeavePre", {
+  7 		group = group,
+    		pattern = "*",
+    		callback = function()
+**0 			if pulse_send_on_exit_callback then
+**0 				pulse_send_on_exit_callback()
+    			end
+    		end,
+    	})
+
+ 14 	vim.api.nvim_create_autocmd({ "BufWrite", "BufLeave" }, {
+  7 		group = group,
+    		pattern = "*",
+    		callback = function()
+**0 			if pulse_send_callback then
+**0 				pulse_send_callback()
+    			end
+    		end,
+    	})
+    end
+
+  2 return {
+  2 	setup_autocommands = setup_autocommands,
+  2 }
+
+==============================================================================
+/home/runner/work/code-stats.nvim/code-stats.nvim/lua/maorun/code-stats/init.lua
+==============================================================================
+  7 local pulse = require("maorun.code-stats.pulse")
+  7 local cs_config = require("maorun.code-stats.config")
+  7 local api = require("maorun.code-stats.api")
+  7 local events = require("maorun.code-stats.events")
+  7 local lang_detection = require("maorun.code-stats.language-detection")
+
+    -- Load any persisted XP data from previous sessions
+  7 pulse.load()
+
+    -- The local 'error' variable has been removed. Errors are now primarily managed in api.lua.
+
+    local function currentXp()
+    	-- currentXp now relies on M.getError() which gets its value from api.get_error()
+**0 	if string.len(api.get_error()) > 0 then
+**0 		return cs_config.config.status_prefix .. "ERR"
+    	end
+
+**0 	local detected_lang = lang_detection.detect_language()
+**0 	return cs_config.config.status_prefix .. pulse.getXp(detected_lang)
+    end
+
+    -- Get formatted XP information for the current language
+    local function getCurrentLanguageXP()
+  3 	if string.len(api.get_error()) > 0 then
+**0 		return "Error: " .. api.get_error()
+    	end
+
+  1 	local detected_lang = lang_detection.detect_language()
+  1 	local xp = pulse.getXp(detected_lang)
+  1 	return string.format("Language: %s, XP: %d", detected_lang or "unknown", xp)
+    end
+
+    -- Get formatted XP information for all tracked languages
+    local function getAllLanguagesXP()
+  9 	if string.len(api.get_error()) > 0 then
+**0 		return "Error: " .. api.get_error()
+    	end
+
+  3 	local result = "Tracked languages and XP:\n"
+  3 	local languages = {}
+
+    	-- Collect all languages with XP > 0
+  9 	for lang, xp in pairs(pulse.xps) do
+  6 		if xp > 0 then
+  6 			table.insert(languages, { lang = lang, xp = xp })
+    		end
+    	end
+
+    	-- Sort by XP descending
+  6 	table.sort(languages, function(a, b)
+  6 		return a.xp > b.xp
+    	end)
+
+  3 	if #languages == 0 then
+  1 		result = result .. "  No XP tracked yet"
+    	else
+  8 		for _, entry in ipairs(languages) do
+  6 			result = result .. string.format("  %s: %d XP\n", entry.lang, entry.xp)
+    		end
+    		-- Remove trailing newline
+  4 		result = result:sub(1, -2)
+    	end
+
+  3 	return result
+    end
+
+    -- Get formatted XP information for a specific language
+    local function getLanguageXP(language)
+ 12 	if string.len(api.get_error()) > 0 then
+**0 		return "Error: " .. api.get_error()
+    	end
+
+  4 	if not language or language == "" then
+  2 		return "Error: No language specified"
+    	end
+
+  2 	local xp = pulse.getXp(language)
+  2 	return string.format("Language: %s, XP: %d", language, xp)
+    end
+
+  7 local M = {}
+
+  7 function M.add(filetype)
+    	-- Check if filetype is in ignored list
+ 23 	for _, ignored_type in ipairs(cs_config.config.ignored_filetypes) do
+  8 		if filetype == ignored_type then
+  3 			return -- Don't add XP for ignored filetypes
+    		end
+    	end
+ 15 	pulse.addXp(filetype, 1)
+    end
+
+  7 M.setup = cs_config.setup
+  7 M.pulseSend = api.pulseSend
+  7 M.currentXp = currentXp
+    M.getError = function()
+**0 	return api.get_error()
+    end
+
+    -- Public functions for user commands
+  7 M.getCurrentLanguageXP = getCurrentLanguageXP
+  7 M.getAllLanguagesXP = getAllLanguagesXP
+  7 M.getLanguageXP = getLanguageXP
+
+    -- Setup autocommands by passing the local add function, api.pulseSend, and api.pulseSendOnExit
+  7 events.setup_autocommands(M.add, M.pulseSend, api.pulseSendOnExit)
+
+    -- Create user commands
+ 14 vim.api.nvim_create_user_command("CodeStatsXP", function()
+**0 	local info = getCurrentLanguageXP()
+**0 	vim.notify(info, vim.log.levels.INFO, { title = "Code::Stats" })
+  7 end, { desc = "Show XP for current language" })
+
+ 14 vim.api.nvim_create_user_command("CodeStatsAll", function()
+**0 	local info = getAllLanguagesXP()
+**0 	vim.notify(info, vim.log.levels.INFO, { title = "Code::Stats" })
+  7 end, { desc = "Show XP for all tracked languages" })
+
+ 14 vim.api.nvim_create_user_command("CodeStatsLang", function(opts)
+**0 	local info = getLanguageXP(opts.args)
+**0 	vim.notify(info, vim.log.levels.INFO, { title = "Code::Stats" })
+  7 end, {
+    	nargs = 1,
+    	desc = "Show XP for specific language",
+    	complete = function()
+    		-- Return list of tracked languages for completion
+**0 		local languages = {}
+**0 		for lang, xp in pairs(pulse.xps) do
+**0 			if xp > 0 then
+**0 				table.insert(languages, lang)
+    			end
+    		end
+**0 		table.sort(languages)
+**0 		return languages
+    	end,
+    })
+
+  7 return M
+
+==============================================================================
+/home/runner/work/code-stats.nvim/code-stats.nvim/lua/maorun/code-stats/language-detection.lua
+==============================================================================
+ 11 local M = {}
+
+    -- Get the current cursor position
+    local function get_cursor_position()
+  5 	local cursor = vim.api.nvim_win_get_cursor(0)
+  5 	return cursor[1] - 1, cursor[2] -- Convert to 0-indexed for treesitter
+    end
+
+    -- Attempt to detect language using treesitter language injection
+    local function detect_language_at_cursor()
+  7 	local base_filetype = vim.bo.filetype
+
+    	-- Try to get any treesitter parser for the buffer
+  7 	local has_parser, parser = pcall(vim.treesitter.get_parser, 0)
+  7 	if not has_parser or not parser then
+    		-- Fallback to original filetype if no treesitter parser
+  2 		return base_filetype
+    	end
+
+  5 	local line, col = get_cursor_position()
+
+    	-- Try to get the language tree at the cursor position
+    	-- This will automatically handle language injection (e.g., CSS in HTML, JS in HTML, etc.)
+  5 	local lang_tree = parser:language_for_range({ line, col, line, col })
+  5 	if lang_tree then
+  2 		local lang = lang_tree:lang()
+    		-- Return the detected language if it's different from the base filetype
+  2 		if lang and lang ~= base_filetype then
+  1 			return lang
+    		end
+    	end
+
+    	-- If language injection doesn't provide a different language, try to get the
+    	-- tree at cursor position and check if it's in a different parser context
+  4 	local tree_for_range = parser:tree_for_range({ line, col, line, col }, { include_children = true })
+  4 	if tree_for_range then
+    		-- Get the root language of this tree
+  1 		local tree_lang = tree_for_range:lang()
+  1 		if tree_lang and tree_lang ~= base_filetype then
+  1 			return tree_lang
+    		end
+    	end
+
+    	-- Check if there are any child parsers (injected languages)
+  3 	local children = parser:children()
+  4 	for _, child_parser in pairs(children) do
+  2 		local child_lang = child_parser:lang()
+  2 		if child_lang then
+    			-- Check if cursor is within this child parser's range
+  2 			local child_trees = child_parser:trees()
+  3 			for _, child_tree in ipairs(child_trees) do
+  2 				local root = child_tree:root()
+  2 				local start_row, start_col, end_row, end_col = root:range()
+
+    				-- Check if cursor is within this child tree's range
+  2 				if line >= start_row and line <= end_row then
+  1 					if line == start_row and col < start_col then
+    						-- Before start
+  1 					elseif line == end_row and col > end_col then
+    						-- After end
+    					else
+    						-- Within range
+  1 						return child_lang
+    					end
+    				end
+    			end
+    		end
+    	end
+
+    	-- No injected language found, return base filetype
+  2 	return base_filetype
+    end
+
+    -- Main function to detect the current language at cursor position
+ 11 function M.detect_language()
+  7 	return detect_language_at_cursor()
+    end
+
+    -- Function to get supported embedded languages for a given filetype
+    -- This is now more dynamic - it discovers available injected languages
+ 11 function M.get_supported_languages(filetype)
+  3 	local languages = { filetype }
+
+    	-- Try to get parser and check for injected languages
+  3 	local has_parser, parser = pcall(vim.treesitter.get_parser, 0)
+  3 	if has_parser and parser then
+  2 		local children = parser:children()
+  4 		for _, child_parser in pairs(children) do
+  2 			local child_lang = child_parser:lang()
+  2 			if child_lang and child_lang ~= filetype then
+    				-- Add to supported languages if not already present
+  2 				local found = false
+  5 				for _, lang in ipairs(languages) do
+  3 					if lang == child_lang then
+**0 						found = true
+    						break
+    					end
+    				end
+  2 				if not found then
+  2 					table.insert(languages, child_lang)
+    				end
+    			end
+    		end
+    	end
+
+  3 	return languages
+    end
+
+ 11 return M
+
+==============================================================================
+/home/runner/work/code-stats.nvim/code-stats.nvim/lua/maorun/code-stats/pulse.lua
+==============================================================================
+ 15 local pulse = {
+ 15 	xps = {},
+    }
+
+    -- Get the path for persisting XP data
+    local function get_persistence_path()
+ 19 	local data_dir = vim.fn.stdpath("data")
+ 18 	return data_dir .. "/code-stats-xp.json"
+    end
+
+    -- Save XP data to file (only if there are XP values > 0)
+    pulse.save = function()
+  1 	local has_xp = false
+  1 	for _, xp in pairs(pulse.xps) do
+  1 		if xp > 0 then
+  1 			has_xp = true
+  1 			break
+    		end
+    	end
+
+  1 	if not has_xp then
+    		-- Remove persistence file if no XP to save
+**0 		local file_path = get_persistence_path()
+**0 		vim.fn.delete(file_path)
+**0 		return
+    	end
+
+  1 	local file_path = get_persistence_path()
+  1 	local data = vim.fn.json_encode(pulse.xps)
+  1 	local file = io.open(file_path, "w")
+  1 	if file then
+  1 		file:write(data)
+  1 		file:close()
+    	end
+    end
+
+    -- Load XP data from file and merge with current XP
+    pulse.load = function()
+  8 	local file_path = get_persistence_path()
+  8 	local file = io.open(file_path, "r")
+  8 	if not file then
+  7 		return -- No persisted data
+    	end
+
+  1 	local content = file:read("*all")
+  1 	file:close()
+
+  1 	if content and content ~= "" then
+  1 		local ok, loaded_xps = pcall(vim.fn.json_decode, content)
+  1 		if ok and type(loaded_xps) == "table" then
+    			-- Merge loaded XP with current XP
+  2 			for lang, xp in pairs(loaded_xps) do
+  1 				if type(xp) == "number" and xp > 0 then
+  2 					pulse.xps[lang] = pulse.getXp(lang) + xp
+    				end
+    			end
+    			-- Remove the persistence file after loading
+  1 			vim.fn.delete(file_path)
+    		end
+    	end
+    end
+
+    pulse.addXp = function(lang, amount)
+ 52 	pulse.xps[lang] = pulse.getXp(lang) + amount
+    end
+
+    pulse.getXp = function(lang)
+ 46 	if pulse.xps[lang] then
+ 19 		return pulse.xps[lang]
+    	end
+ 27 	return 0
+    end
+
+    pulse.reset = function()
+  9 	pulse.xps = {}
+    	-- Also remove persistence file when resetting
+  9 	local file_path = get_persistence_path()
+ 10 	vim.fn.delete(file_path)
+    end
+
+ 15 return pulse
+
+==============================================================================
+Summary
+==============================================================================
+
+File                                                                                           Hits Missed Coverage
+-------------------------------------------------------------------------------------------------------------------
+/home/runner/work/code-stats.nvim/code-stats.nvim/lua/maorun/code-stats/api.lua                12   38     24.00%
+/home/runner/work/code-stats.nvim/code-stats.nvim/lua/maorun/code-stats/config.lua             12   1      92.31%
+/home/runner/work/code-stats.nvim/code-stats.nvim/lua/maorun/code-stats/events.lua             11   7      61.11%
+/home/runner/work/code-stats.nvim/code-stats.nvim/lua/maorun/code-stats/init.lua               49   20     71.01%
+/home/runner/work/code-stats.nvim/code-stats.nvim/lua/maorun/code-stats/language-detection.lua 48   1      97.96%
+/home/runner/work/code-stats.nvim/code-stats.nvim/lua/maorun/code-stats/pulse.lua              37   3      92.50%
+-------------------------------------------------------------------------------------------------------------------
+Total                                                                                          169  70     70.71%
