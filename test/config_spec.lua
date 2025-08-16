@@ -76,4 +76,40 @@ describe("Config", function()
 		local result = config.setup({ ignored_filetypes = { "typescript", "log" } })
 		assert.are.same({ "typescript", "log" }, result.ignored_filetypes)
 	end)
+
+	it("should have default enhanced_statusline as false", function()
+		local result = config.setup()
+		assert.are.equal(false, result.enhanced_statusline)
+	end)
+
+	it("should allow setting enhanced_statusline through setup", function()
+		local result = config.setup({
+			enhanced_statusline = true,
+		})
+		assert.are.equal(true, result.enhanced_statusline)
+	end)
+
+	it("should have default statusline_format", function()
+		local result = config.setup()
+		assert.are.equal("%s%d (%d%% to L%d)", result.statusline_format)
+	end)
+
+	it("should allow custom statusline_format", function()
+		local custom_format = "XP:%d L:%d [%d%%]"
+		local result = config.setup({
+			statusline_format = custom_format,
+		})
+		assert.are.equal(custom_format, result.statusline_format)
+	end)
+
+	it("should preserve enhanced statusline options with other config", function()
+		local result = config.setup({
+			api_key = "test_key",
+			enhanced_statusline = true,
+			statusline_format = "Custom: %s%d L%d (%d%%)",
+		})
+		assert.are.equal("test_key", result.api_key)
+		assert.are.equal(true, result.enhanced_statusline)
+		assert.are.equal("Custom: %s%d L%d (%d%%)", result.statusline_format)
+	end)
 end)

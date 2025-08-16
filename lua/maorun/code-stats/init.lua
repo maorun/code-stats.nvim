@@ -18,7 +18,40 @@ local function currentXp()
 	end
 
 	local detected_lang = lang_detection.detect_language()
-	return cs_config.config.status_prefix .. pulse.getXp(detected_lang)
+
+	-- If enhanced statusline is enabled, show XP, level, and progress
+	if cs_config.config.enhanced_statusline then
+		local xp = pulse.getXp(detected_lang)
+		local level = pulse.getLevel(detected_lang)
+		local progress = pulse.getProgressToNextLevel(detected_lang)
+		local next_level = level + 1
+
+		return string.format(
+			cs_config.config.statusline_format,
+			cs_config.config.status_prefix,
+			xp,
+			progress,
+			next_level
+		)
+	else
+		-- Default behavior: just show XP
+		return cs_config.config.status_prefix .. pulse.getXp(detected_lang)
+	end
+end
+
+-- Enhanced statusline function that can be called directly
+local function currentXpEnhanced()
+	if string.len(api.get_error()) > 0 then
+		return cs_config.config.status_prefix .. "ERR"
+	end
+
+	local detected_lang = lang_detection.detect_language()
+	local xp = pulse.getXp(detected_lang)
+	local level = pulse.getLevel(detected_lang)
+	local progress = pulse.getProgressToNextLevel(detected_lang)
+	local next_level = level + 1
+
+	return string.format(cs_config.config.statusline_format, cs_config.config.status_prefix, xp, progress, next_level)
 end
 
 -- Get formatted XP information for the current language
@@ -96,6 +129,7 @@ end
 M.setup = cs_config.setup
 M.pulseSend = api.pulseSend
 M.currentXp = currentXp
+M.currentXpEnhanced = currentXpEnhanced
 M.getError = function()
 	return api.get_error()
 end
