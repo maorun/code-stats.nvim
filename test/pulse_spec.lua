@@ -129,4 +129,68 @@ describe("Pulse", function()
 		_G.vim.fn.json_decode = original_json_decode
 		_G.vim.fn.delete = original_delete
 	end)
+
+	-- Test level calculation functions
+	describe("Level calculations", function()
+		it("should calculate level 1 for 0 XP", function()
+			assert.are.equal(1, pulse.calculateLevel(0))
+		end)
+
+		it("should calculate level 1 for 99 XP", function()
+			assert.are.equal(1, pulse.calculateLevel(99))
+		end)
+
+		it("should calculate level 2 for 100 XP", function()
+			assert.are.equal(2, pulse.calculateLevel(100))
+		end)
+
+		it("should calculate level 3 for 400 XP", function()
+			assert.are.equal(3, pulse.calculateLevel(400))
+		end)
+
+		it("should calculate level 6 for 2500 XP", function()
+			assert.are.equal(6, pulse.calculateLevel(2500))
+		end)
+
+		it("should calculate XP required for levels correctly", function()
+			assert.are.equal(0, pulse.calculateXpForLevel(1))
+			assert.are.equal(100, pulse.calculateXpForLevel(2))
+			assert.are.equal(400, pulse.calculateXpForLevel(3))
+			assert.are.equal(2500, pulse.calculateXpForLevel(6))
+		end)
+
+		it("should calculate progress to next level correctly", function()
+			-- 150 XP = Level 2 (100 XP) + 50 XP progress
+			-- Next level (3) requires 400 XP, so 300 XP needed from level 2
+			-- Progress: 50/300 = 16.66% -> 16% (floored)
+			assert.are.equal(16, pulse.calculateProgressToNextLevel(150))
+		end)
+
+		it("should return 0% progress for 0 XP", function()
+			assert.are.equal(0, pulse.calculateProgressToNextLevel(0))
+		end)
+
+		it("should return 100% progress for very high levels", function()
+			-- Level 100+ should return 100% progress
+			local very_high_xp = 100 * 100 * 100 -- Level 101
+			assert.are.equal(100, pulse.calculateProgressToNextLevel(very_high_xp))
+		end)
+	end)
+
+	-- Test language-specific level functions
+	describe("Language-specific level functions", function()
+		it("should return level 1 for language with no XP", function()
+			assert.are.equal(1, pulse.getLevel("python"))
+		end)
+
+		it("should return correct level for language with XP", function()
+			pulse.addXp("lua", 150)
+			assert.are.equal(2, pulse.getLevel("lua"))
+		end)
+
+		it("should return correct progress for language with XP", function()
+			pulse.addXp("javascript", 150)
+			assert.are.equal(16, pulse.getProgressToNextLevel("javascript"))
+		end)
+	end)
 end)

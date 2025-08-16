@@ -134,6 +134,56 @@ pulse.getXp = function(lang)
 	return 0
 end
 
+-- Calculate level from XP using standard gaming formula
+-- Level = floor(sqrt(XP / 100)) + 1
+pulse.calculateLevel = function(xp)
+	if not xp or xp <= 0 then
+		return 1
+	end
+	return math.floor(math.sqrt(xp / 100)) + 1
+end
+
+-- Calculate XP required for a specific level
+pulse.calculateXpForLevel = function(level)
+	if not level or level <= 1 then
+		return 0
+	end
+	return (level - 1) * (level - 1) * 100
+end
+
+-- Calculate progress to next level as a percentage (0-100)
+pulse.calculateProgressToNextLevel = function(xp)
+	if not xp or xp <= 0 then
+		return 0
+	end
+
+	local current_level = pulse.calculateLevel(xp)
+	local current_level_xp = pulse.calculateXpForLevel(current_level)
+	local next_level_xp = pulse.calculateXpForLevel(current_level + 1)
+
+	-- If we're at the maximum reasonable level, return 100%
+	if current_level >= 100 then
+		return 100
+	end
+
+	local xp_in_current_level = xp - current_level_xp
+	local xp_needed_for_next = next_level_xp - current_level_xp
+
+	return math.floor((xp_in_current_level / xp_needed_for_next) * 100)
+end
+
+-- Get level for a specific language
+pulse.getLevel = function(lang)
+	local xp = pulse.getXp(lang)
+	return pulse.calculateLevel(xp)
+end
+
+-- Get progress to next level for a specific language
+pulse.getProgressToNextLevel = function(lang)
+	local xp = pulse.getXp(lang)
+	return pulse.calculateProgressToNextLevel(xp)
+end
+
 pulse.reset = function()
 	local lang_count = 0
 	for _ in pairs(pulse.xps) do

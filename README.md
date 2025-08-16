@@ -27,9 +27,11 @@ now setup the plugin
 
 ```lua
 require('maorun.code-stats').setup({
-    api_key = '<YOUR_API_KEY>' -- not necessary if global api key is set
-    status_prefix = 'C:S ' -- the prefix of xp in statusline
-    ignored_filetypes = {'markdown', 'text'} -- filetypes to ignore from XP tracking
+    api_key = '<YOUR_API_KEY>', -- not necessary if global api key is set
+    status_prefix = 'C:S ', -- the prefix of xp in statusline
+    enhanced_statusline = false, -- Show XP, level and progress in statusline
+    statusline_format = "%s%d (%d%% to L%d)", -- Format for enhanced statusline
+    ignored_filetypes = {'markdown', 'text'}, -- filetypes to ignore from XP tracking
     logging = {
         enabled = false, -- Set to true to enable logging
         level = 'INFO', -- Log level: ERROR, WARN, INFO, DEBUG
@@ -45,6 +47,40 @@ of the buffer
 ```lua
 vim.opt.statusline=vim.opt.statusline + "%{luaeval(\"require('maorun.code-stats').currentXp()\")} "
 ```
+
+### Enhanced Statusline
+
+You can enable an enhanced statusline that shows XP, level, and progress to the next level:
+
+```lua
+require('maorun.code-stats').setup({
+    api_key = '<YOUR_API_KEY>',
+    enhanced_statusline = true,  -- Enable enhanced display
+    statusline_format = "%s%d (%d%% to L%d)"  -- Optional: customize format
+})
+```
+
+The enhanced statusline displays:
+- Current XP for the active language
+- Current level (calculated from XP)
+- Progress percentage to the next level
+- Next level number
+
+**Format placeholders:**
+- `%s` - Status prefix (default: "C:S ")
+- First `%d` - Current XP
+- Second `%d` - Progress percentage (0-100)
+- Third `%d` - Next level number
+
+**Example output:** `C:S 250 (25% to L3)` (250 XP, 25% progress to level 3)
+
+You can also use the enhanced function directly:
+
+```lua
+vim.opt.statusline=vim.opt.statusline + "%{luaeval(\"require('maorun.code-stats').currentXpEnhanced()\")} "
+```
+
+**Level Calculation:** Levels are calculated using the formula `Level = floor(sqrt(XP / 100)) + 1`, where each level requires progressively more XP.
 
 ## User Commands
 
