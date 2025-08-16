@@ -7,6 +7,7 @@ Table of Contents                          *code-stats.nvim-table-of-contents*
   - Installation |code-stats.nvim-code::stats-integration-in-lua-installation|
   - Usage               |code-stats.nvim-code::stats-integration-in-lua-usage|
   - Statusline     |code-stats.nvim-code::stats-integration-in-lua-statusline|
+  - User Commands|code-stats.nvim-code::stats-integration-in-lua-user-commands|
   - Ignoring File Types|code-stats.nvim-code::stats-integration-in-lua-ignoring-file-types|
   - Troubleshooting|code-stats.nvim-code::stats-integration-in-lua-troubleshooting|
 
@@ -61,6 +62,35 @@ the buffer
 
 >lua
     vim.opt.statusline=vim.opt.statusline + "%{luaeval(\"require('maorun.code-stats').currentXp()\")} "
+<
+
+
+USER COMMANDS   *code-stats.nvim-code::stats-integration-in-lua-user-commands*
+
+The plugin provides several user commands to access XP information:
+
+
+:CODESTATSXP ~
+
+Shows XP for the currently detected language at cursor position.
+
+
+:CODESTATSALL ~
+
+Shows XP for all tracked languages, sorted by XP amount (highest first).
+
+
+:CODESTATSLANG <LANGUAGE> ~
+
+Shows XP for a specific language. Supports tab completion with tracked
+languages.
+
+**Example usage:**
+
+>vim
+    :CodeStatsXP                " Show current language XP
+    :CodeStatsAll               " Show all languages with XP
+    :CodeStatsLang lua          " Show XP for Lua specifically
 <
 
 
