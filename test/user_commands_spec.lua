@@ -68,8 +68,25 @@ describe("User Commands", function()
 			end
 			return "/tmp"
 		end
+		_G.vim.fn.json_decode = function(data)
+			-- Simple JSON decoder for test data
+			if type(data) == "string" and string.match(data, "^{.*}$") then
+				-- Mock decode for test profile data
+				if string.match(data, "testuser") then
+					return {
+						user = { username = "testuser" },
+						total_xp = 12345,
+						level = 25,
+						languages = { lua = 5000, javascript = 3000 },
+					}
+				end
+			end
+			return {}
+		end
 
 		-- Reset modules before each test
+		package.loaded["maorun.code-stats.config"] = nil
+		package.loaded["maorun.code-stats.api"] = nil
 		package.loaded["maorun.code-stats.pulse"] = nil
 		package.loaded["maorun.code-stats"] = nil
 		pulse = require("maorun.code-stats.pulse")
@@ -157,5 +174,100 @@ describe("User Commands", function()
 
 		local result = plugin.getAllLanguagesXP()
 		assert.is.truthy(string.match(result, "No XP tracked yet"))
+	end)
+
+	-- Test the new profile functionality
+	it("should provide profile functionality through API", function()
+		-- Mock the API to simulate profile response
+		local original_curl = package.loaded["plenary.curl"]
+		package.loaded["plenary.curl"] = {
+			request = function(opts)
+				if opts.method == "GET" and string.match(opts.url, "profile") then
+					local mock_profile =
+						'{"user":{"username":"testuser"},"total_xp":12345,"level":25,"languages":{"lua":5000,"javascript":3000}}'
+					if opts.callback then
+						opts.callback({ status = 200, body = mock_profile })
+					end
+					return { status = 200, body = mock_profile }
+				else
+					if opts.callback then
+						opts.callback({ status = 200 })
+					end
+					return { status = 200 }
+				end
+			end,
+		}
+
+		plugin.setup({ api_key = "test", api_url = "https://codestats.net/", status_prefix = "CS " })
+
+		-- Variables to capture callback results
+		local callback_called = false
+		local callback_profile_data = nil
+		local callback_error_msg = nil
+
+		-- Require API module after mock is set up
+		package.loaded["maorun.code-stats.api"] = nil
+		local api = require("maorun.code-stats.api")
+
+		api.getProfile(function(profile_data, error_msg)
+			callback_called = true
+			callback_profile_data = profile_data
+			callback_error_msg = error_msg
+		end)
+
+		-- Verify the callback was called and results are correct
+		assert.is.truthy(callback_called)
+		assert.is.falsy(callback_error_msg)
+		assert.is.truthy(callback_profile_data)
+
+		-- Parse the JSON response
+		local ok, profile = pcall(_G.vim.fn.json_decode, callback_profile_data)
+		assert.is.truthy(ok)
+		assert.is.truthy(profile.user)
+		assert.are.equal("testuser", profile.user.username)
+		assert.are.equal(12345, profile.total_xp)
+		assert.are.equal(25, profile.level)
+
+		-- Restore original curl mock
+		package.loaded["plenary.curl"] = original_curl
+	end)
+
+	it("should handle profile API errors gracefully", function()
+		-- Mock the API to simulate error response
+		local original_curl = package.loaded["plenary.curl"]
+		package.loaded["plenary.curl"] = {
+			request = function(opts)
+				if opts.on_error then
+					opts.on_error({ message = "Network error" })
+				end
+				return nil
+			end,
+		}
+
+		plugin.setup({ api_key = "test", api_url = "https://codestats.net/", status_prefix = "CS " })
+
+		-- Variables to capture callback results
+		local callback_called = false
+		local callback_profile_data = nil
+		local callback_error_msg = nil
+
+		-- Require API module after mock is set up
+		package.loaded["maorun.code-stats.api"] = nil
+		local api = require("maorun.code-stats.api")
+
+		api.getProfile(function(profile_data, error_msg)
+			callback_called = true
+			callback_profile_data = profile_data
+			callback_error_msg = error_msg
+		end)
+
+		-- Verify the callback was called and error is correct
+		assert.is.truthy(callback_called)
+		assert.is.falsy(callback_profile_data)
+		assert.is.truthy(callback_error_msg)
+		assert.is.truthy(string.match(callback_error_msg, "Network error"))
+
+		-- Restore original curl mock
+		package.loaded["plenary.curl"] = original_curl
 	end)
 end)

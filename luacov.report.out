@@ -1,13 +1,13 @@
 ==============================================================================
 /home/runner/work/code-stats.nvim/code-stats.nvim/lua/maorun/code-stats/api.lua
 ==============================================================================
-   2 local curl = require("plenary.curl")
-   2 local pulse = require("maorun.code-stats.pulse")
-   2 local cs_config = require("maorun.code-stats.config")
-   2 local logging = require("maorun.code-stats.logging")
+  11 local curl = require("plenary.curl")
+  11 local pulse = require("maorun.code-stats.pulse")
+  11 local cs_config = require("maorun.code-stats.config")
+  11 local logging = require("maorun.code-stats.logging")
 
-   2 local error_message = ""
-   2 local is_vim_leaving = false
+  11 local error_message = ""
+  11 local is_vim_leaving = false
 
      local function requestToApi(body)
 ***0 	local url = cs_config.config.api_url
@@ -115,71 +115,145 @@
    8 	return error_message
      end
 
-   2 return {
-   2 	pulseSend = pulseSend,
-   2 	pulseSendOnExit = pulseSendOnExit,
-   2 	requestToApi = requestToApi,
-   2 	get_error = get_error,
-   2 }
+     local function getProfile(callback)
+   2 	logging.debug("Starting profile request operation")
+
+     	-- Check if config is initialized by checking essential string fields
+   2 	local config_values = {
+   2 		cs_config.config.status_prefix,
+   2 		cs_config.config.api_url,
+   2 		cs_config.config.api_key,
+     	}
+   4 	if string.len(table.concat(config_values)) == 0 then
+***0 		local error_msg = "Code::Stats plugin not properly configured"
+***0 		logging.error("Plugin configuration incomplete - missing essential settings")
+***0 		if callback then
+***0 			callback(nil, error_msg)
+     		end
+***0 		return
+     	end
+
+   2 	local url = cs_config.config.api_url
+   4 	if string.len(url) == 0 then
+***0 		local error_msg = "Code::Stats API URL not configured"
+***0 		logging.error("Missing API URL configuration")
+***0 		if callback then
+***0 			callback(nil, error_msg)
+     		end
+***0 		return
+     	end
+
+   4 	if string.len(cs_config.config.api_key) == 0 then
+***0 		local error_msg = "Code::Stats API key not configured"
+***0 		logging.error("Missing API key configuration")
+***0 		if callback then
+***0 			callback(nil, error_msg)
+     		end
+***0 		return
+     	end
+
+   2 	local full_url = url .. "api/my/profile"
+   2 	logging.debug("Attempting profile API request to " .. full_url)
+
+   2 	return curl.request({
+   2 		url = full_url,
+     		method = "GET",
+   2 		headers = {
+   2 			["X-API-Token"] = cs_config.config.api_key,
+     			["Accept"] = "application/json",
+   2 		},
+     		on_error = function(data)
+   1 			local error_details = data.message or "Unknown network error"
+   1 			local error_msg = "Unable to retrieve profile from Code::Stats server: " .. error_details
+   1 			logging.log_api_request(full_url, "GET", false, error_details)
+   1 			if callback then
+   1 				callback(nil, error_msg)
+     			end
+     		end,
+     		callback = function(response)
+   1 			if response.status >= 200 and response.status < 300 then
+   1 				logging.log_api_request(full_url, "GET", true)
+   1 				logging.info("Profile data successfully retrieved from Code::Stats")
+   1 				if callback then
+   1 					callback(response.body, nil)
+     				end
+     			else
+***0 				local error_msg = "Code::Stats server error (HTTP " .. response.status .. ")"
+***0 				logging.log_api_request(full_url, "GET", false, "HTTP " .. response.status)
+***0 				if callback then
+***0 					callback(nil, error_msg)
+     				end
+     			end
+     		end,
+   2 	})
+     end
+
+  11 return {
+  11 	pulseSend = pulseSend,
+  11 	pulseSendOnExit = pulseSendOnExit,
+  11 	requestToApi = requestToApi,
+  11 	get_error = get_error,
+  11 	getProfile = getProfile,
+  11 }
 
 ==============================================================================
 /home/runner/work/code-stats.nvim/code-stats.nvim/lua/maorun/code-stats/config.lua
 ==============================================================================
-  11 local defaults = {
+  18 local defaults = {
      	status_prefix = "C:S ",
      	api_url = "https://codestats.net/",
      	api_key = "",
-  11 	ignored_filetypes = {},
+  18 	ignored_filetypes = {},
      	enhanced_statusline = false, -- Show XP, level, and progress in statusline
      	statusline_format = "%s%d (%d%% to L%d)", -- Format: prefix, xp, progress%, next_level
-  11 	logging = {
+  18 	logging = {
      		enabled = false,
      		level = "INFO", -- ERROR, WARN, INFO, DEBUG
      		file_path = nil, -- Will default to vim.fn.stdpath("data") .. "/code-stats.log" if not set
-  11 	},
+  18 	},
      }
-  11 local config = defaults
+  18 local config = defaults
 
-  11 local logging = require("maorun.code-stats.logging")
+  18 local logging = require("maorun.code-stats.logging")
 
-  11 local M = {
-  22 	config = vim.deepcopy(defaults),
+  18 local M = {
+  36 	config = vim.deepcopy(defaults),
      }
 
-  11 function M.setup(user_config)
-  18 	local globalConfig = {}
-  18 	if vim.g.codestats_api_key then
+  18 function M.setup(user_config)
+  20 	local globalConfig = {}
+  20 	if vim.g.codestats_api_key then
 ***0 		globalConfig.api_key = vim.g.codestats_api_key
      	end
-  36 	config = vim.tbl_deep_extend("force", defaults, user_config or {}, globalConfig)
-  18 	M.config = config
+  40 	config = vim.tbl_deep_extend("force", defaults, user_config or {}, globalConfig)
+  20 	M.config = config
 
      	-- Configure logging based on config
-  18 	local log_config = {
-  18 		enabled = config.logging.enabled,
-  18 		file_path = config.logging.file_path,
+  20 	local log_config = {
+  20 		enabled = config.logging.enabled,
+  20 		file_path = config.logging.file_path,
      	}
 
      	-- Convert string level to number
-  18 	if type(config.logging.level) == "string" then
-  18 		local level_map = {
-  18 			ERROR = logging.levels.ERROR,
-  18 			WARN = logging.levels.WARN,
-  18 			INFO = logging.levels.INFO,
-  18 			DEBUG = logging.levels.DEBUG,
+  20 	if type(config.logging.level) == "string" then
+  20 		local level_map = {
+  20 			ERROR = logging.levels.ERROR,
+  20 			WARN = logging.levels.WARN,
+  20 			INFO = logging.levels.INFO,
+  20 			DEBUG = logging.levels.DEBUG,
      		}
-  18 		log_config.level = level_map[config.logging.level] or logging.levels.INFO
+  20 		log_config.level = level_map[config.logging.level] or logging.levels.INFO
      	else
 ***0 		log_config.level = config.logging.level
      	end
 
-  18 	logging.setup(log_config)
-  18 	logging.log_config("Plugin configured with logging " .. (config.logging.enabled and "enabled" or "disabled"))
+  20 	logging.setup(log_config)
+  20 	logging.log_config("Plugin configured with logging " .. (config.logging.enabled and "enabled" or "disabled"))
 
-  18 	return config
+  20 	return config
      end
 
-  11 return M
+  18 return M
 
 ==============================================================================
 /home/runner/work/code-stats.nvim/code-stats.nvim/lua/maorun/code-stats/events.lua
@@ -188,11 +262,11 @@
    2 local logging = require("maorun.code-stats.logging")
 
      local function setup_autocommands(add_xp_callback, pulse_send_callback, pulse_send_on_exit_callback)
-   8 	logging.log_init("Setting up autocommands for XP tracking")
-   8 	local group = vim.api.nvim_create_augroup("codestats_track", { clear = true })
+  10 	logging.log_init("Setting up autocommands for XP tracking")
+  10 	local group = vim.api.nvim_create_augroup("codestats_track", { clear = true })
 
-  16 	vim.api.nvim_create_autocmd({ "InsertCharPre", "TextChanged" }, {
-   8 		group = group,
+  20 	vim.api.nvim_create_autocmd({ "InsertCharPre", "TextChanged" }, {
+  10 		group = group,
      		pattern = "*",
      		callback = function()
 ***0 			if add_xp_callback then
@@ -202,8 +276,8 @@
      		end,
      	})
 
-  16 	vim.api.nvim_create_autocmd("VimLeavePre", {
-   8 		group = group,
+  20 	vim.api.nvim_create_autocmd("VimLeavePre", {
+  10 		group = group,
      		pattern = "*",
      		callback = function()
 ***0 			if pulse_send_on_exit_callback then
@@ -212,8 +286,8 @@
      		end,
      	})
 
-  16 	vim.api.nvim_create_autocmd({ "BufWrite", "BufLeave" }, {
-   8 		group = group,
+  20 	vim.api.nvim_create_autocmd({ "BufWrite", "BufLeave" }, {
+  10 		group = group,
      		pattern = "*",
      		callback = function()
 ***0 			if pulse_send_callback then
@@ -222,7 +296,7 @@
      		end,
      	})
 
-   8 	logging.log_init("Autocommands configured successfully")
+  10 	logging.log_init("Autocommands configured successfully")
      end
 
    2 return {
@@ -232,16 +306,16 @@
 ==============================================================================
 /home/runner/work/code-stats.nvim/code-stats.nvim/lua/maorun/code-stats/init.lua
 ==============================================================================
-   8 local pulse = require("maorun.code-stats.pulse")
-   8 local cs_config = require("maorun.code-stats.config")
-   8 local api = require("maorun.code-stats.api")
-   8 local events = require("maorun.code-stats.events")
-   8 local lang_detection = require("maorun.code-stats.language-detection")
-   8 local logging = require("maorun.code-stats.logging")
+  10 local pulse = require("maorun.code-stats.pulse")
+  10 local cs_config = require("maorun.code-stats.config")
+  10 local api = require("maorun.code-stats.api")
+  10 local events = require("maorun.code-stats.events")
+  10 local lang_detection = require("maorun.code-stats.language-detection")
+  10 local logging = require("maorun.code-stats.logging")
 
      -- Load any persisted XP data from previous sessions
-   8 logging.log_init("Loading persisted XP data")
-   8 pulse.load()
+  10 logging.log_init("Loading persisted XP data")
+  10 pulse.load()
 
      -- The local 'error' variable has been removed. Errors are now primarily managed in api.lua.
 
@@ -347,9 +421,9 @@
    2 	return string.format("Language: %s, XP: %d", language, xp)
      end
 
-   8 local M = {}
+  10 local M = {}
 
-   8 function M.add(filetype)
+  10 function M.add(filetype)
      	-- Check if filetype is in ignored list
   23 	for _, ignored_type in ipairs(cs_config.config.ignored_filetypes) do
    8 		if filetype == ignored_type then
@@ -360,24 +434,24 @@
   15 	pulse.addXp(filetype, 1)
      end
 
-   8 M.setup = cs_config.setup
-   8 M.pulseSend = api.pulseSend
-   8 M.currentXp = currentXp
-   8 M.currentXpEnhanced = currentXpEnhanced
+  10 M.setup = cs_config.setup
+  10 M.pulseSend = api.pulseSend
+  10 M.currentXp = currentXp
+  10 M.currentXpEnhanced = currentXpEnhanced
      M.getError = function()
 ***0 	return api.get_error()
      end
 
      -- Public functions for user commands
-   8 M.getCurrentLanguageXP = getCurrentLanguageXP
-   8 M.getAllLanguagesXP = getAllLanguagesXP
-   8 M.getLanguageXP = getLanguageXP
+  10 M.getCurrentLanguageXP = getCurrentLanguageXP
+  10 M.getAllLanguagesXP = getAllLanguagesXP
+  10 M.getLanguageXP = getLanguageXP
 
      -- Setup autocommands by passing the local add function, api.pulseSend, and api.pulseSendOnExit
-   8 events.setup_autocommands(M.add, M.pulseSend, api.pulseSendOnExit)
+  10 events.setup_autocommands(M.add, M.pulseSend, api.pulseSendOnExit)
 
      -- Create user commands
-  16 vim.api.nvim_create_user_command("CodeStatsXP", function()
+  20 vim.api.nvim_create_user_command("CodeStatsXP", function()
 ***0 	local info = getCurrentLanguageXP()
 ***0 	local error_msg = api.get_error()
 
@@ -388,9 +462,9 @@
 ***0 		vim.notify(info, vim.log.levels.INFO, { title = "Code::Stats" })
 ***0 		logging.debug("User command CodeStatsXP executed successfully")
      	end
-   8 end, { desc = "Show XP for current language" })
+  10 end, { desc = "Show XP for current language" })
 
-  16 vim.api.nvim_create_user_command("CodeStatsAll", function()
+  20 vim.api.nvim_create_user_command("CodeStatsAll", function()
 ***0 	local info = getAllLanguagesXP()
 ***0 	local error_msg = api.get_error()
 
@@ -401,9 +475,9 @@
 ***0 		vim.notify(info, vim.log.levels.INFO, { title = "Code::Stats" })
 ***0 		logging.debug("User command CodeStatsAll executed successfully")
      	end
-   8 end, { desc = "Show XP for all tracked languages" })
+  10 end, { desc = "Show XP for all tracked languages" })
 
-  16 vim.api.nvim_create_user_command("CodeStatsLang", function(opts)
+  20 vim.api.nvim_create_user_command("CodeStatsLang", function(opts)
 ***0 	local info = getLanguageXP(opts.args)
 ***0 	local error_msg = api.get_error()
 
@@ -414,7 +488,7 @@
 ***0 		vim.notify(info, vim.log.levels.INFO, { title = "Code::Stats" })
 ***0 		logging.debug("User command CodeStatsLang executed for language: " .. (opts.args or "unknown"))
      	end
-   8 end, {
+  10 end, {
      	nargs = 1,
      	desc = "Show XP for specific language",
      	complete = function()
@@ -431,7 +505,7 @@
      })
 
      -- Add user command for managing logging
-  16 vim.api.nvim_create_user_command("CodeStatsLog", function(opts)
+  20 vim.api.nvim_create_user_command("CodeStatsLog", function(opts)
 ***0 	local action = opts.args or ""
 
 ***0 	if action == "clear" then
@@ -455,7 +529,7 @@
      	else
 ***0 		vim.notify("Usage: :CodeStatsLog [clear|path|status]", vim.log.levels.INFO, { title = "Code::Stats" })
      	end
-   8 end, {
+  10 end, {
      	nargs = "?",
      	desc = "Manage Code::Stats logging (clear|path|status)",
      	complete = function()
@@ -464,7 +538,7 @@
      })
 
      -- Add user command for manual XP synchronization
-  16 vim.api.nvim_create_user_command("CodeStatsXpSend", function()
+  20 vim.api.nvim_create_user_command("CodeStatsXpSend", function()
 ***0 	local error_msg = api.get_error()
 
      	-- Clear any previous error before sending
@@ -480,12 +554,64 @@
 ***0 		vim.notify("XP data successfully sent to Code::Stats", vim.log.levels.INFO, { title = "Code::Stats" })
 ***0 		logging.debug("User command CodeStatsXpSend executed successfully")
      	end
-   8 end, { desc = "Send all pending XP to Code::Stats immediately" })
+  10 end, { desc = "Send all pending XP to Code::Stats immediately" })
 
-   8 logging.log_init("User commands created successfully")
-   8 logging.log_init("Code::Stats plugin initialization complete")
+     -- Add user command for profile display
+  20 vim.api.nvim_create_user_command("CodeStatsProfile", function()
+***0 	api.getProfile(function(profile_data, error_msg)
+***0 		if error_msg then
+***0 			vim.notify("Code::Stats Error: " .. error_msg, vim.log.levels.ERROR, { title = "Code::Stats" })
+***0 			logging.error("User command CodeStatsProfile failed: " .. error_msg)
+***0 		elseif profile_data then
+     			-- Parse the JSON response
+***0 			local ok, profile = pcall(vim.fn.json_decode, profile_data)
+***0 			if not ok then
+***0 				vim.notify(
+     					"Code::Stats Error: Invalid profile data received",
+***0 					vim.log.levels.ERROR,
+***0 					{ title = "Code::Stats" }
+     				)
+***0 				logging.error("User command CodeStatsProfile failed: JSON decode error")
+***0 				return
+     			end
 
-   8 return M
+     			-- Format and display profile information
+***0 			local info = "Code::Stats Profile:\n"
+***0 			if profile.user then
+***0 				info = info .. "User: " .. (profile.user.username or "Unknown") .. "\n"
+     			end
+***0 			if profile.total_xp then
+***0 				info = info .. "Total XP: " .. profile.total_xp .. "\n"
+     			end
+***0 			if profile.level then
+***0 				info = info .. "Level: " .. profile.level .. "\n"
+     			end
+***0 			if profile.languages and type(profile.languages) == "table" then
+***0 				info = info .. "Top Languages:\n"
+     				-- Show top 5 languages if available
+***0 				local count = 0
+***0 				for lang, xp in pairs(profile.languages) do
+***0 					if count >= 5 then
+     						break
+     					end
+***0 					info = info .. "  " .. lang .. ": " .. xp .. " XP\n"
+***0 					count = count + 1
+     				end
+     			end
+
+***0 			vim.notify(info, vim.log.levels.INFO, { title = "Code::Stats" })
+***0 			logging.debug("User command CodeStatsProfile executed successfully")
+     		else
+***0 			vim.notify("Code::Stats Error: No profile data received", vim.log.levels.ERROR, { title = "Code::Stats" })
+***0 			logging.error("User command CodeStatsProfile failed: No data received")
+     		end
+     	end)
+  10 end, { desc = "Show Code::Stats profile information" })
+
+  10 logging.log_init("User commands created successfully")
+  10 logging.log_init("Code::Stats plugin initialization complete")
+
+  10 return M
 
 ==============================================================================
 /home/runner/work/code-stats.nvim/code-stats.nvim/lua/maorun/code-stats/language-detection.lua
@@ -633,12 +759,12 @@
 
      -- Configure logging
   43 function M.setup(user_config)
-  26 	if user_config then
-  52 		config = vim.tbl_deep_extend("force", config, user_config)
+  28 	if user_config then
+  56 		config = vim.tbl_deep_extend("force", config, user_config)
      	end
 
      	-- Set default log file path if logging is enabled but no path specified
-  26 	if config.enabled and not config.file_path then
+  28 	if config.enabled and not config.file_path then
    1 		local data_dir = vim.fn.stdpath("data")
    1 		config.file_path = data_dir .. "/code-stats.log"
      	end
@@ -651,8 +777,8 @@
 
      -- Write log entry to file
      local function write_to_file(level, message)
- 119 	if not config.enabled or not config.file_path then
- 110 		return
+ 140 	if not config.enabled or not config.file_path then
+ 131 		return
      	end
 
    9 	if level > config.level then
@@ -673,7 +799,7 @@
 
      -- Log an error message
   43 function M.error(message)
-   4 	write_to_file(M.levels.ERROR, message)
+   5 	write_to_file(M.levels.ERROR, message)
      end
 
      -- Log a warning message
@@ -683,26 +809,26 @@
 
      -- Log an info message
   43 function M.info(message)
-  99 	write_to_file(M.levels.INFO, message)
+ 113 	write_to_file(M.levels.INFO, message)
      end
 
      -- Log a debug message
   43 function M.debug(message)
-  13 	write_to_file(M.levels.DEBUG, message)
+  19 	write_to_file(M.levels.DEBUG, message)
      end
 
      -- Log API requests
   43 function M.log_api_request(url, method, success, error_msg)
-   2 	local status = success and "SUCCESS" or "FAILED"
-   2 	local msg = string.format("API %s %s - %s", method, url, status)
-   2 	if error_msg then
-   1 		msg = msg .. " - " .. error_msg
+   4 	local status = success and "SUCCESS" or "FAILED"
+   4 	local msg = string.format("API %s %s - %s", method, url, status)
+   4 	if error_msg then
+   2 		msg = msg .. " - " .. error_msg
      	end
 
-   2 	if success then
-   2 		M.info(msg)
+   4 	if success then
+   4 		M.info(msg)
      	else
-   1 		M.error(msg)
+   2 		M.error(msg)
      	end
      end
 
@@ -714,12 +840,12 @@
 
      -- Log configuration operations
   43 function M.log_config(message)
-  18 	M.info("CONFIG: " .. message)
+  20 	M.info("CONFIG: " .. message)
      end
 
      -- Log plugin initialization
   43 function M.log_init(message)
-  40 	M.info("INIT: " .. message)
+  50 	M.info("INIT: " .. message)
      end
 
      -- Get current log file path
@@ -748,16 +874,16 @@
 ==============================================================================
 /home/runner/work/code-stats.nvim/code-stats.nvim/lua/maorun/code-stats/pulse.lua
 ==============================================================================
-  28 local logging = require("maorun.code-stats.logging")
+  30 local logging = require("maorun.code-stats.logging")
 
-  28 local pulse = {
-  28 	xps = {},
+  30 local pulse = {
+  30 	xps = {},
      }
 
      -- Get the path for persisting XP data
      local function get_persistence_path()
-  19 	local data_dir = vim.fn.stdpath("data")
-  19 	return data_dir .. "/code-stats-xp.json"
+  21 	local data_dir = vim.fn.stdpath("data")
+  21 	return data_dir .. "/code-stats-xp.json"
      end
 
      -- Save XP data to file (only if there are XP values > 0)
@@ -807,14 +933,14 @@
 
      -- Load XP data from file and merge with current XP
      pulse.load = function()
-   9 	local file_path = get_persistence_path()
-   9 	local file, err = io.open(file_path, "r")
-   9 	if not file then
-   8 		if err and not err:match("No such file") then
+  11 	local file_path = get_persistence_path()
+  11 	local file, err = io.open(file_path, "r")
+  11 	if not file then
+  10 		if err and not err:match("No such file") then
 ***0 			logging.warn("Could not open persistence file: " .. err)
      		end
-   8 		logging.debug("No persistence file found, starting fresh")
-   8 		return -- No persisted data
+  10 		logging.debug("No persistence file found, starting fresh")
+  10 		return -- No persisted data
      	end
 
    1 	local success, content = pcall(file.read, file, "*all")
@@ -951,7 +1077,7 @@
      	end
      end
 
-  28 return pulse
+  30 return pulse
 
 ==============================================================================
 Summary
@@ -959,12 +1085,12 @@ Summary
 
 File                                                                                           Hits Missed Coverage
 -------------------------------------------------------------------------------------------------------------------
-/home/runner/work/code-stats.nvim/code-stats.nvim/lua/maorun/code-stats/api.lua                13   55     19.12%
+/home/runner/work/code-stats.nvim/code-stats.nvim/lua/maorun/code-stats/api.lua                41   74     35.65%
 /home/runner/work/code-stats.nvim/code-stats.nvim/lua/maorun/code-stats/config.lua             27   2      93.10%
 /home/runner/work/code-stats.nvim/code-stats.nvim/lua/maorun/code-stats/events.lua             14   7      66.67%
-/home/runner/work/code-stats.nvim/code-stats.nvim/lua/maorun/code-stats/init.lua               59   77     43.38%
+/home/runner/work/code-stats.nvim/code-stats.nvim/lua/maorun/code-stats/init.lua               61   107    36.31%
 /home/runner/work/code-stats.nvim/code-stats.nvim/lua/maorun/code-stats/language-detection.lua 48   1      97.96%
 /home/runner/work/code-stats.nvim/code-stats.nvim/lua/maorun/code-stats/logging.lua            62   0      100.00%
 /home/runner/work/code-stats.nvim/code-stats.nvim/lua/maorun/code-stats/pulse.lua              82   24     77.36%
 -------------------------------------------------------------------------------------------------------------------
-Total                                                                                          305  166    64.76%
+Total                                                                                          335  215    60.91%

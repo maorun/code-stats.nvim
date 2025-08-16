@@ -18,6 +18,7 @@ describe("Ignored Filetypes", function()
 			return 1
 		end
 		_G.vim.api.nvim_create_autocmd = function() end
+		_G.vim.api.nvim_create_user_command = function() end
 		_G.vim.api.nvim_win_get_cursor = function()
 			return { 1, 0 }
 		end
