@@ -282,7 +282,7 @@
 
      	-- Sort by XP descending
    6 	table.sort(languages, function(a, b)
-   6 		return a.xp > b.xp
+   5 		return a.xp > b.xp
      	end)
 
    3 	if #languages == 0 then
