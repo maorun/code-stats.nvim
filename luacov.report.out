@@ -6,6 +6,7 @@
   2 local cs_config = require("maorun.code-stats.config")
 
   2 local error_message = ""
+  2 local is_vim_leaving = false
 
     local function requestToApi(body)
 **0 	local url = cs_config.config.api_url
@@ -21,6 +22,10 @@
     		body = body,
     		on_error = function(data)
 **0 			error_message = "could not send request to code-stats: " .. data.message
+    			-- If we're leaving vim and there's an error, persist the XP data
+**0 			if is_vim_leaving then
+**0 				pulse.save()
+    			end
     		end,
     		callback = function()
 **0 			error_message = ""
@@ -73,7 +78,16 @@
 
 **0 	if string.len(xps) > 0 then
 **0 		requestToApi('{ "coded_at": "' .. os.date("%Y-%m-%dT%X%z") .. '", "xps": [ ' .. xps .. " ] }")
+**0 	elseif is_vim_leaving then
+    		-- If we're leaving vim but have no XP to send, still clean up any persistence file
+**0 		pulse.reset()
     	end
+    end
+
+    local function pulseSendOnExit()
+**0 	is_vim_leaving = true
+**0 	pulseSend()
+**0 	is_vim_leaving = false
     end
 
     local function get_error()
@@ -82,6 +96,7 @@
 
   2 return {
   2 	pulseSend = pulseSend,
+  2 	pulseSendOnExit = pulseSendOnExit,
   2 	requestToApi = requestToApi,
   2 	get_error = get_error,
   2 }
@@ -118,7 +133,7 @@
 ==============================================================================
   2 local lang_detection = require("maorun.code-stats.language-detection")
 
-    local function setup_autocommands(add_xp_callback, pulse_send_callback)
+    local function setup_autocommands(add_xp_callback, pulse_send_callback, pulse_send_on_exit_callback)
   7 	local group = vim.api.nvim_create_augroup("codestats_track", { clear = true })
 
  14 	vim.api.nvim_create_autocmd({ "InsertCharPre", "TextChanged" }, {
@@ -136,8 +151,8 @@
   7 		group = group,
     		pattern = "*",
     		callback = function()
-**0 			if pulse_send_callback then
-**0 				pulse_send_callback()
+**0 			if pulse_send_on_exit_callback then
+**0 				pulse_send_on_exit_callback()
     			end
     		end,
     	})
@@ -165,6 +180,9 @@
   7 local api = require("maorun.code-stats.api")
   7 local events = require("maorun.code-stats.events")
   7 local lang_detection = require("maorun.code-stats.language-detection")
+
+    -- Load any persisted XP data from previous sessions
+  7 pulse.load()
 
     -- The local 'error' variable has been removed. Errors are now primarily managed in api.lua.
 
@@ -207,7 +225,7 @@
 
     	-- Sort by XP descending
   6 	table.sort(languages, function(a, b)
-  5 		return a.xp > b.xp
+  6 		return a.xp > b.xp
     	end)
 
   3 	if #languages == 0 then
@@ -261,8 +279,8 @@
   7 M.getAllLanguagesXP = getAllLanguagesXP
   7 M.getLanguageXP = getLanguageXP
 
-    -- Setup autocommands by passing the local add function and api.pulseSend
-  7 events.setup_autocommands(M.add, M.pulseSend)
+    -- Setup autocommands by passing the local add function, api.pulseSend, and api.pulseSendOnExit
+  7 events.setup_autocommands(M.add, M.pulseSend, api.pulseSendOnExit)
 
     -- Create user commands
  14 vim.api.nvim_create_user_command("CodeStatsXP", function()
@@ -412,26 +430,87 @@
 ==============================================================================
 /home/runner/work/code-stats.nvim/code-stats.nvim/lua/maorun/code-stats/pulse.lua
 ==============================================================================
- 14 local pulse = {
- 14 	xps = {},
+ 15 local pulse = {
+ 15 	xps = {},
     }
 
+    -- Get the path for persisting XP data
+    local function get_persistence_path()
+ 19 	local data_dir = vim.fn.stdpath("data")
+ 18 	return data_dir .. "/code-stats-xp.json"
+    end
+
+    -- Save XP data to file (only if there are XP values > 0)
+    pulse.save = function()
+  1 	local has_xp = false
+  1 	for _, xp in pairs(pulse.xps) do
+  1 		if xp > 0 then
+  1 			has_xp = true
+  1 			break
+    		end
+    	end
+
+  1 	if not has_xp then
+    		-- Remove persistence file if no XP to save
+**0 		local file_path = get_persistence_path()
+**0 		vim.fn.delete(file_path)
+**0 		return
+    	end
+
+  1 	local file_path = get_persistence_path()
+  1 	local data = vim.fn.json_encode(pulse.xps)
+  1 	local file = io.open(file_path, "w")
+  1 	if file then
+  1 		file:write(data)
+  1 		file:close()
+    	end
+    end
+
+    -- Load XP data from file and merge with current XP
+    pulse.load = function()
+  8 	local file_path = get_persistence_path()
+  8 	local file = io.open(file_path, "r")
+  8 	if not file then
+  7 		return -- No persisted data
+    	end
+
+  1 	local content = file:read("*all")
+  1 	file:close()
+
+  1 	if content and content ~= "" then
+  1 		local ok, loaded_xps = pcall(vim.fn.json_decode, content)
+  1 		if ok and type(loaded_xps) == "table" then
+    			-- Merge loaded XP with current XP
+  2 			for lang, xp in pairs(loaded_xps) do
+  1 				if type(xp) == "number" and xp > 0 then
+  2 					pulse.xps[lang] = pulse.getXp(lang) + xp
+    				end
+    			end
+    			-- Remove the persistence file after loading
+  1 			vim.fn.delete(file_path)
+    		end
+    	end
+    end
+
     pulse.addXp = function(lang, amount)
- 50 	pulse.xps[lang] = pulse.getXp(lang) + amount
+ 52 	pulse.xps[lang] = pulse.getXp(lang) + amount
     end
 
     pulse.getXp = function(lang)
- 43 	if pulse.xps[lang] then
- 18 		return pulse.xps[lang]
+ 46 	if pulse.xps[lang] then
+ 19 		return pulse.xps[lang]
     	end
- 25 	return 0
+ 27 	return 0
     end
 
     pulse.reset = function()
-  8 	pulse.xps = {}
+  9 	pulse.xps = {}
+    	-- Also remove persistence file when resetting
+  9 	local file_path = get_persistence_path()
+ 10 	vim.fn.delete(file_path)
     end
 
- 14 return pulse
+ 15 return pulse
 
 ==============================================================================
 Summary
@@ -439,11 +518,11 @@ Summary
 
 File                                                                                           Hits Missed Coverage
 -------------------------------------------------------------------------------------------------------------------
-/home/runner/work/code-stats.nvim/code-stats.nvim/lua/maorun/code-stats/api.lua                10   31     24.39%
+/home/runner/work/code-stats.nvim/code-stats.nvim/lua/maorun/code-stats/api.lua                12   38     24.00%
 /home/runner/work/code-stats.nvim/code-stats.nvim/lua/maorun/code-stats/config.lua             12   1      92.31%
 /home/runner/work/code-stats.nvim/code-stats.nvim/lua/maorun/code-stats/events.lua             11   7      61.11%
-/home/runner/work/code-stats.nvim/code-stats.nvim/lua/maorun/code-stats/init.lua               48   20     70.59%
+/home/runner/work/code-stats.nvim/code-stats.nvim/lua/maorun/code-stats/init.lua               49   20     71.01%
 /home/runner/work/code-stats.nvim/code-stats.nvim/lua/maorun/code-stats/language-detection.lua 48   1      97.96%
-/home/runner/work/code-stats.nvim/code-stats.nvim/lua/maorun/code-stats/pulse.lua              8    0      100.00%
+/home/runner/work/code-stats.nvim/code-stats.nvim/lua/maorun/code-stats/pulse.lua              37   3      92.50%
 -------------------------------------------------------------------------------------------------------------------
-Total                                                                                          137  60     69.54%
+Total                                                                                          169  70     70.71%

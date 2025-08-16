@@ -4,6 +4,9 @@ local api = require("maorun.code-stats.api")
 local events = require("maorun.code-stats.events")
 local lang_detection = require("maorun.code-stats.language-detection")
 
+-- Load any persisted XP data from previous sessions
+pulse.load()
+
 -- The local 'error' variable has been removed. Errors are now primarily managed in api.lua.
 
 local function currentXp()
@@ -99,8 +102,8 @@ M.getCurrentLanguageXP = getCurrentLanguageXP
 M.getAllLanguagesXP = getAllLanguagesXP
 M.getLanguageXP = getLanguageXP
 
--- Setup autocommands by passing the local add function and api.pulseSend
-events.setup_autocommands(M.add, M.pulseSend)
+-- Setup autocommands by passing the local add function, api.pulseSend, and api.pulseSendOnExit
+events.setup_autocommands(M.add, M.pulseSend, api.pulseSendOnExit)
 
 -- Create user commands
 vim.api.nvim_create_user_command("CodeStatsXP", function()

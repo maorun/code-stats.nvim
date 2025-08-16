@@ -3,6 +3,7 @@ local pulse = require("maorun.code-stats.pulse")
 local cs_config = require("maorun.code-stats.config")
 
 local error_message = ""
+local is_vim_leaving = false
 
 local function requestToApi(body)
 	local url = cs_config.config.api_url
@@ -18,6 +19,10 @@ local function requestToApi(body)
 		body = body,
 		on_error = function(data)
 			error_message = "could not send request to code-stats: " .. data.message
+			-- If we're leaving vim and there's an error, persist the XP data
+			if is_vim_leaving then
+				pulse.save()
+			end
 		end,
 		callback = function()
 			error_message = ""
@@ -70,7 +75,16 @@ local function pulseSend()
 
 	if string.len(xps) > 0 then
 		requestToApi('{ "coded_at": "' .. os.date("%Y-%m-%dT%X%z") .. '", "xps": [ ' .. xps .. " ] }")
+	elseif is_vim_leaving then
+		-- If we're leaving vim but have no XP to send, still clean up any persistence file
+		pulse.reset()
 	end
+end
+
+local function pulseSendOnExit()
+	is_vim_leaving = true
+	pulseSend()
+	is_vim_leaving = false
 end
 
 local function get_error()
@@ -79,6 +93,7 @@ end
 
 return {
 	pulseSend = pulseSend,
+	pulseSendOnExit = pulseSendOnExit,
 	requestToApi = requestToApi,
 	get_error = get_error,
 }
