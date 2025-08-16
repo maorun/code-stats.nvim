@@ -323,10 +323,11 @@
   10 local events = require("maorun.code-stats.events")
   10 local lang_detection = require("maorun.code-stats.language-detection")
   10 local logging = require("maorun.code-stats.logging")
+***0 local statistics = require("maorun.code-stats.statistics")
 
      -- Load any persisted XP data from previous sessions
   10 logging.log_init("Loading persisted XP data")
-  10 pulse.load()
+***0 pulse.load()
 
      -- The local 'error' variable has been removed. Errors are now primarily managed in api.lua.
 
@@ -370,99 +371,99 @@
 ***0 	local progress = pulse.getProgressToNextLevel(detected_lang)
 ***0 	local next_level = level + 1
 
-***0 	return string.format(cs_config.config.statusline_format, cs_config.config.status_prefix, xp, progress, next_level)
+  10 	return string.format(cs_config.config.statusline_format, cs_config.config.status_prefix, xp, progress, next_level)
      end
 
      -- Get formatted XP information for the current language
      local function getCurrentLanguageXP()
-   3 	if string.len(api.get_error()) > 0 then
+***0 	if string.len(api.get_error()) > 0 then
 ***0 		return "Error: " .. api.get_error()
      	end
 
    1 	local detected_lang = lang_detection.detect_language()
    1 	local xp = pulse.getXp(detected_lang)
-   1 	return string.format("Language: %s, XP: %d", detected_lang or "unknown", xp)
+  10 	return string.format("Language: %s, XP: %d", detected_lang or "unknown", xp)
      end
 
      -- Get formatted XP information for all tracked languages
      local function getAllLanguagesXP()
-   9 	if string.len(api.get_error()) > 0 then
+***0 	if string.len(api.get_error()) > 0 then
 ***0 		return "Error: " .. api.get_error()
      	end
 
    3 	local result = "Tracked languages and XP:\n"
-   3 	local languages = {}
+***0 	local languages = {}
 
      	-- Collect all languages with XP > 0
-   9 	for lang, xp in pairs(pulse.xps) do
+   6 	for lang, xp in pairs(pulse.xps) do
    6 		if xp > 0 then
-   6 			table.insert(languages, { lang = lang, xp = xp })
+***0 			table.insert(languages, { lang = lang, xp = xp })
      		end
      	end
 
      	-- Sort by XP descending
    6 	table.sort(languages, function(a, b)
-   6 		return a.xp > b.xp
+   3 		return a.xp > b.xp
      	end)
 
-   3 	if #languages == 0 then
-   1 		result = result .. "  No XP tracked yet"
+   1 	if #languages == 0 then
+***0 		result = result .. "  No XP tracked yet"
      	else
-   8 		for _, entry in ipairs(languages) do
-   6 			result = result .. string.format("  %s: %d XP\n", entry.lang, entry.xp)
+   6 		for _, entry in ipairs(languages) do
+***0 			result = result .. string.format("  %s: %d XP\n", entry.lang, entry.xp)
      		end
      		-- Remove trailing newline
-   4 		result = result:sub(1, -2)
+***0 		result = result:sub(1, -2)
      	end
 
-   3 	return result
+  10 	return result
      end
 
      -- Get formatted XP information for a specific language
      local function getLanguageXP(language)
-  12 	if string.len(api.get_error()) > 0 then
+***0 	if string.len(api.get_error()) > 0 then
 ***0 		return "Error: " .. api.get_error()
      	end
 
-   4 	if not language or language == "" then
-   2 		return "Error: No language specified"
+   2 	if not language or language == "" then
+***0 		return "Error: No language specified"
      	end
 
    2 	local xp = pulse.getXp(language)
-   2 	return string.format("Language: %s, XP: %d", language, xp)
+  10 	return string.format("Language: %s, XP: %d", language, xp)
      end
 
-  10 local M = {}
+***0 local M = {}
 
-  10 function M.add(filetype)
+***0 function M.add(filetype)
      	-- Check if filetype is in ignored list
-  23 	for _, ignored_type in ipairs(cs_config.config.ignored_filetypes) do
-   8 		if filetype == ignored_type then
+   8 	for _, ignored_type in ipairs(cs_config.config.ignored_filetypes) do
+   3 		if filetype == ignored_type then
    3 			logging.debug("Skipping XP for ignored filetype: " .. filetype)
-   3 			return -- Don't add XP for ignored filetypes
+***0 			return -- Don't add XP for ignored filetypes
      		end
      	end
-  15 	pulse.addXp(filetype, 1)
+  25 	pulse.addXp(filetype, 1)
      end
 
   10 M.setup = cs_config.setup
   10 M.pulseSend = api.pulseSend
   10 M.currentXp = currentXp
-  10 M.currentXpEnhanced = currentXpEnhanced
+***0 M.currentXpEnhanced = currentXpEnhanced
      M.getError = function()
-***0 	return api.get_error()
+  10 	return api.get_error()
      end
 
      -- Public functions for user commands
   10 M.getCurrentLanguageXP = getCurrentLanguageXP
   10 M.getAllLanguagesXP = getAllLanguagesXP
-  10 M.getLanguageXP = getLanguageXP
+***0 M.getLanguageXP = getLanguageXP
 
      -- Setup autocommands by passing the local add function, api.pulseSend, and api.pulseSendOnExit
-  10 events.setup_autocommands(M.add, M.pulseSend, api.pulseSendOnExit)
+***0 events.setup_autocommands(M.add, M.pulseSend, api.pulseSendOnExit)
 
      -- Create user commands
-  20 vim.api.nvim_create_user_command("CodeStatsXP", function()
+***0 vim.api.nvim_create_user_command("CodeStatsXP", function()
 ***0 	local info = getCurrentLanguageXP()
 ***0 	local error_msg = api.get_error()
 
@@ -473,9 +474,9 @@
 ***0 		vim.notify(info, vim.log.levels.INFO, { title = "Code::Stats" })
 ***0 		logging.debug("User command CodeStatsXP executed successfully")
      	end
-  10 end, { desc = "Show XP for current language" })
+***0 end, { desc = "Show XP for current language" })
 
-  20 vim.api.nvim_create_user_command("CodeStatsAll", function()
+***0 vim.api.nvim_create_user_command("CodeStatsAll", function()
 ***0 	local info = getAllLanguagesXP()
 ***0 	local error_msg = api.get_error()
 
@@ -486,9 +487,9 @@
 ***0 		vim.notify(info, vim.log.levels.INFO, { title = "Code::Stats" })
 ***0 		logging.debug("User command CodeStatsAll executed successfully")
      	end
-  10 end, { desc = "Show XP for all tracked languages" })
+***0 end, { desc = "Show XP for all tracked languages" })
 
-  20 vim.api.nvim_create_user_command("CodeStatsLang", function(opts)
+***0 vim.api.nvim_create_user_command("CodeStatsLang", function(opts)
 ***0 	local info = getLanguageXP(opts.args)
 ***0 	local error_msg = api.get_error()
 
@@ -499,7 +500,7 @@
 ***0 		vim.notify(info, vim.log.levels.INFO, { title = "Code::Stats" })
 ***0 		logging.debug("User command CodeStatsLang executed for language: " .. (opts.args or "unknown"))
      	end
-  10 end, {
+***0 end, {
      	nargs = 1,
      	desc = "Show XP for specific language",
      	complete = function()
@@ -511,12 +512,12 @@
      			end
      		end
 ***0 		table.sort(languages)
-***0 		return languages
+  10 		return languages
      	end,
      })
 
      -- Add user command for managing logging
-  20 vim.api.nvim_create_user_command("CodeStatsLog", function(opts)
+***0 vim.api.nvim_create_user_command("CodeStatsLog", function(opts)
 ***0 	local action = opts.args or ""
 
 ***0 	if action == "clear" then
@@ -540,16 +541,16 @@
      	else
 ***0 		vim.notify("Usage: :CodeStatsLog [clear|path|status]", vim.log.levels.INFO, { title = "Code::Stats" })
      	end
-  10 end, {
+***0 end, {
      	nargs = "?",
      	desc = "Manage Code::Stats logging (clear|path|status)",
      	complete = function()
-***0 		return { "clear", "path", "status" }
+  10 		return { "clear", "path", "status" }
      	end,
      })
 
      -- Add user command for manual XP synchronization
-  20 vim.api.nvim_create_user_command("CodeStatsXpSend", function()
+***0 vim.api.nvim_create_user_command("CodeStatsXpSend", function()
 ***0 	local error_msg = api.get_error()
 
      	-- Clear any previous error before sending
@@ -565,10 +566,10 @@
 ***0 		vim.notify("XP data successfully sent to Code::Stats", vim.log.levels.INFO, { title = "Code::Stats" })
 ***0 		logging.debug("User command CodeStatsXpSend executed successfully")
      	end
-  10 end, { desc = "Send all pending XP to Code::Stats immediately" })
+***0 end, { desc = "Send all pending XP to Code::Stats immediately" })
 
      -- Add user command for profile display
-  20 vim.api.nvim_create_user_command("CodeStatsProfile", function()
+***0 vim.api.nvim_create_user_command("CodeStatsProfile", function()
 ***0 	api.getProfile(function(profile_data, error_msg)
 ***0 		if error_msg then
 ***0 			vim.notify("Code::Stats Error: " .. error_msg, vim.log.levels.ERROR, { title = "Code::Stats" })
@@ -617,12 +618,62 @@
 ***0 			logging.error("User command CodeStatsProfile failed: No data received")
      		end
      	end)
-  10 end, { desc = "Show Code::Stats profile information" })
+***0 end, { desc = "Show Code::Stats profile information" })
 
-  10 logging.log_init("User commands created successfully")
-  10 logging.log_init("Code::Stats plugin initialization complete")
+     -- Add user command for daily statistics
+***0 vim.api.nvim_create_user_command("CodeStatsDaily", function(opts)
+  10 	local date = opts.args and opts.args ~= "" and opts.args or nil
+***0 	local daily_stats = statistics.get_daily_stats(date)
+***0 	local formatted = statistics.format_daily_stats(daily_stats)
 
-  10 return M
+***0 	vim.notify(formatted, vim.log.levels.INFO, { title = "Code::Stats" })
+***0 	logging.debug("User command CodeStatsDaily executed for date: " .. (date or "today"))
+***0 end, {
+     	nargs = "?",
+     	desc = "Show daily XP statistics (optional: YYYY-MM-DD)",
+     })
+
+     -- Add user command for weekly statistics
+***0 vim.api.nvim_create_user_command("CodeStatsWeekly", function(opts)
+***0 	local date = opts.args and opts.args ~= "" and opts.args or nil
+***0 	local weekly_stats = statistics.get_weekly_stats(date)
+***0 	local formatted = statistics.format_weekly_stats(weekly_stats)
+
+***0 	vim.notify(formatted, vim.log.levels.INFO, { title = "Code::Stats" })
+***0 	logging.debug("User command CodeStatsWeekly executed for date: " .. (date or "current week"))
+***0 end, {
+     	nargs = "?",
+     	desc = "Show weekly XP statistics (optional: YYYY-MM-DD)",
+     })
+
+     -- Add user command for monthly statistics
+***0 vim.api.nvim_create_user_command("CodeStatsMonthly", function(opts)
+***0 	local year, month = nil, nil
+***0 	if opts.args and opts.args ~= "" then
+     		-- Parse YYYY-MM format
+***0 		local parts = vim.split(opts.args, "-")
+***0 		if #parts >= 1 then
+***0 			year = tonumber(parts[1])
+     		end
+***0 		if #parts >= 2 then
+***0 			month = tonumber(parts[2])
+     		end
+     	end
+
+***0 	local monthly_stats = statistics.get_monthly_stats(year, month)
+***0 	local formatted = statistics.format_monthly_stats(monthly_stats)
+
+***0 	vim.notify(formatted, vim.log.levels.INFO, { title = "Code::Stats" })
+***0 	logging.debug("User command CodeStatsMonthly executed for: " .. (opts.args or "current month"))
+***0 end, {
+     	nargs = "?",
+     	desc = "Show monthly XP statistics (optional: YYYY-MM)",
+     })
+
+***0 logging.log_init("User commands created successfully")
+***0 logging.log_init("Code::Stats plugin initialization complete")
+
+***0 return M
 
 ==============================================================================
 /home/runner/work/code-stats.nvim/code-stats.nvim/lua/maorun/code-stats/language-detection.lua
@@ -927,28 +978,29 @@
 ==============================================================================
   40 local logging = require("maorun.code-stats.logging")
   40 local notifications = require("maorun.code-stats.notifications")
+***0 local utils = require("maorun.code-stats.utils")
 
   40 local pulse = {
-  40 	xps = {},
+     	xps = {},
      }
 
      -- Get the path for persisting XP data
      local function get_persistence_path()
   21 	local data_dir = vim.fn.stdpath("data")
-  21 	return data_dir .. "/code-stats-xp.json"
+  40 	return data_dir .. "/code-stats-xp.json"
      end
 
      -- Save XP data to file (only if there are XP values > 0)
-     pulse.save = function()
+   1 pulse.save = function()
    1 	local has_xp = false
    1 	for _, xp in pairs(pulse.xps) do
    1 		if xp > 0 then
    1 			has_xp = true
-   1 			break
+     			break
      		end
      	end
 
-   1 	if not has_xp then
+***0 	if not has_xp then
      		-- Remove persistence file if no XP to save
 ***0 		local file_path = get_persistence_path()
 ***0 		local ok, err = pcall(vim.fn.delete, file_path)
@@ -962,50 +1014,50 @@
 
    1 	local file_path = get_persistence_path()
    1 	local ok, data = pcall(vim.fn.json_encode, pulse.xps)
-   1 	if not ok then
+***0 	if not ok then
 ***0 		logging.error("Failed to encode XP data for persistence: " .. data)
 ***0 		return
      	end
 
    1 	local file, err = io.open(file_path, "w")
-   1 	if not file then
+***0 	if not file then
 ***0 		logging.error("Failed to open persistence file for writing: " .. (err or "unknown error"))
 ***0 		return
      	end
 
    1 	local success, write_err = pcall(file.write, file, data)
-   1 	file:close()
+***0 	file:close()
 
-   1 	if not success then
+***0 	if not success then
 ***0 		logging.error("Failed to write XP data to persistence file: " .. write_err)
      	else
-   1 		logging.info("XP data persisted to file: " .. file_path)
+***0 		logging.info("XP data persisted to file: " .. file_path)
      	end
      end
 
      -- Load XP data from file and merge with current XP
-     pulse.load = function()
+  11 pulse.load = function()
   11 	local file_path = get_persistence_path()
   11 	local file, err = io.open(file_path, "r")
-  11 	if not file then
-  10 		if err and not err:match("No such file") then
+  10 	if not file then
+***0 		if err and not err:match("No such file") then
 ***0 			logging.warn("Could not open persistence file: " .. err)
      		end
   10 		logging.debug("No persistence file found, starting fresh")
-  10 		return -- No persisted data
+***0 		return -- No persisted data
      	end
 
    1 	local success, content = pcall(file.read, file, "*all")
-   1 	file:close()
+***0 	file:close()
 
-   1 	if not success then
+***0 	if not success then
 ***0 		logging.error("Failed to read persistence file: " .. content)
 ***0 		return
      	end
 
    1 	if content and content ~= "" then
    1 		local ok, loaded_xps = pcall(vim.fn.json_decode, content)
-   1 		if not ok then
+***0 		if not ok then
 ***0 			logging.error("Failed to parse persisted XP data: " .. loaded_xps)
      			-- Try to remove corrupted file
 ***0 			local delete_ok, delete_err = pcall(vim.fn.delete, file_path)
@@ -1015,22 +1067,22 @@
 ***0 			return
      		end
 
-   1 		if type(loaded_xps) == "table" then
+***0 		if type(loaded_xps) == "table" then
      			-- Merge loaded XP with current XP
-   1 			local merged_count = 0
-   2 			for lang, xp in pairs(loaded_xps) do
+   2 			local merged_count = 0
+   1 			for lang, xp in pairs(loaded_xps) do
    1 				if type(xp) == "number" and xp > 0 then
    1 					local old_xp = pulse.getXp(lang)
    1 					pulse.xps[lang] = old_xp + xp
    1 					merged_count = merged_count + 1
-   1 					logging.debug("Merged " .. xp .. " XP for " .. lang .. " (total: " .. pulse.xps[lang] .. ")")
+***0 					logging.debug("Merged " .. xp .. " XP for " .. lang .. " (total: " .. pulse.xps[lang] .. ")")
      				end
      			end
-   1 			logging.info("Loaded and merged " .. merged_count .. " languages from persistence file")
+***0 			logging.info("Loaded and merged " .. merged_count .. " languages from persistence file")
 
      			-- Remove the persistence file after loading
    1 			local delete_ok, delete_err = pcall(vim.fn.delete, file_path)
-   1 			if not delete_ok then
+***0 			if not delete_ok then
 ***0 				logging.warn("Failed to remove persistence file after loading: " .. delete_err)
      			end
      		else
@@ -1039,53 +1091,52 @@
      	end
      end
 
-     pulse.addXp = function(lang, amount)
-  36 	if not lang or lang == "" then
+  36 pulse.addXp = function(lang, amount)
+***0 	if not lang or lang == "" then
 ***0 		logging.warn("Attempted to add XP to empty language")
 ***0 		return
      	end
 
-  36 	if not amount or amount <= 0 then
+   2 	if not amount or amount <= 0 then
    2 		logging.warn("Attempted to add invalid XP amount: " .. tostring(amount))
-   2 		return
+***0 		return
      	end
 
   34 	local old_xp = pulse.getXp(lang)
-  34 	local old_level = pulse.calculateLevel(old_xp)
+***0 	local old_level = pulse.calculateLevel(old_xp)
 
   34 	pulse.xps[lang] = old_xp + amount
-  34 	local new_level = pulse.calculateLevel(pulse.xps[lang])
+***0 	local new_level = pulse.calculateLevel(pulse.xps[lang])
 
-  34 	logging.log_xp_operation("ADD", lang, amount, pulse.xps[lang])
+***0 	logging.log_xp_operation("ADD", lang, amount, pulse.xps[lang])
+
+     	-- Add to historical tracking for statistics (lazy load to avoid circular dependency)
+   7 	local ok, statistics = pcall(require, "maorun.code-stats.statistics")
+***0 	if ok then
+  74 		statistics.add_history_entry(lang, amount)
+     	end
 
      	-- Check for level-up and send notification
-  34 	if new_level > old_level then
-   7 		notifications.level_up(lang, new_level)
+  20 	if new_level > old_level then
+***0 		notifications.level_up(lang, new_level)
      	end
      end
 
      pulse.getXp = function(lang)
-  57 	if pulse.xps[lang] then
-  20 		return pulse.xps[lang]
+***0 	if pulse.xps[lang] then
+***0 		return pulse.xps[lang]
      	end
-  37 	return 0
+  28 	return 0
      end
 
-     -- Calculate level from XP using standard gaming formula
-     -- Level = floor(sqrt(XP / 100)) + 1
+     -- Calculate level from XP using shared utility function
      pulse.calculateLevel = function(xp)
-  78 	if not xp or xp <= 0 then
-  28 		return 1
-     	end
-  50 	return math.floor(math.sqrt(xp / 100)) + 1
+***0 	return utils.calculateLevel(xp)
      end
 
      -- Calculate XP required for a specific level
      pulse.calculateXpForLevel = function(level)
-  10 	if not level or level <= 1 then
-   1 		return 0
-     	end
-   9 	return (level - 1) * (level - 1) * 100
+   9 	return utils.calculateXpForLevel(level)
      end
 
      -- Calculate progress to next level as a percentage (0-100)
@@ -1149,10 +1200,10 @@ File                                                                            
 /home/runner/work/code-stats.nvim/code-stats.nvim/lua/maorun/code-stats/api.lua                41   74     35.65%
 /home/runner/work/code-stats.nvim/code-stats.nvim/lua/maorun/code-stats/config.lua             33   2      94.29%
 /home/runner/work/code-stats.nvim/code-stats.nvim/lua/maorun/code-stats/events.lua             14   7      66.67%
-/home/runner/work/code-stats.nvim/code-stats.nvim/lua/maorun/code-stats/init.lua               61   107    36.31%
+/home/runner/work/code-stats.nvim/code-stats.nvim/lua/maorun/code-stats/init.lua               35   161    17.86%
 /home/runner/work/code-stats.nvim/code-stats.nvim/lua/maorun/code-stats/language-detection.lua 48   1      97.96%
 /home/runner/work/code-stats.nvim/code-stats.nvim/lua/maorun/code-stats/logging.lua            62   0      100.00%
 /home/runner/work/code-stats.nvim/code-stats.nvim/lua/maorun/code-stats/notifications.lua      14   0      100.00%
-/home/runner/work/code-stats.nvim/code-stats.nvim/lua/maorun/code-stats/pulse.lua              87   24     78.38%
+/home/runner/work/code-stats.nvim/code-stats.nvim/lua/maorun/code-stats/pulse.lua              62   50     55.36%
 -------------------------------------------------------------------------------------------------------------------
-Total                                                                                          360  215    62.61%
+Total                                                                                          309  295    51.16%
