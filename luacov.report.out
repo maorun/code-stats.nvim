@@ -199,61 +199,72 @@
 ==============================================================================
 /home/runner/work/code-stats.nvim/code-stats.nvim/lua/maorun/code-stats/config.lua
 ==============================================================================
-  18 local defaults = {
+  23 local defaults = {
      	status_prefix = "C:S ",
      	api_url = "https://codestats.net/",
      	api_key = "",
-  18 	ignored_filetypes = {},
+  23 	ignored_filetypes = {},
      	enhanced_statusline = false, -- Show XP, level, and progress in statusline
      	statusline_format = "%s%d (%d%% to L%d)", -- Format: prefix, xp, progress%, next_level
-  18 	logging = {
+  23 	notifications = {
+     		enabled = true, -- Enable all notifications
+  23 		level_up = {
+     			enabled = true, -- Enable level-up notifications
+     			message = "🎉 Level Up! %s reached level %d!", -- Format: language, new_level
+  23 		},
+  23 	},
+  23 	logging = {
      		enabled = false,
      		level = "INFO", -- ERROR, WARN, INFO, DEBUG
      		file_path = nil, -- Will default to vim.fn.stdpath("data") .. "/code-stats.log" if not set
-  18 	},
+  23 	},
      }
-  18 local config = defaults
+  23 local config = defaults
 
-  18 local logging = require("maorun.code-stats.logging")
+  23 local logging = require("maorun.code-stats.logging")
+  23 local notifications = require("maorun.code-stats.notifications")
 
-  18 local M = {
-  36 	config = vim.deepcopy(defaults),
+  23 local M = {
+  46 	config = vim.deepcopy(defaults),
      }
 
-  18 function M.setup(user_config)
-  20 	local globalConfig = {}
-  20 	if vim.g.codestats_api_key then
+  23 function M.setup(user_config)
+  25 	local globalConfig = {}
+  25 	if vim.g.codestats_api_key then
 ***0 		globalConfig.api_key = vim.g.codestats_api_key
      	end
-  40 	config = vim.tbl_deep_extend("force", defaults, user_config or {}, globalConfig)
-  20 	M.config = config
+  50 	config = vim.tbl_deep_extend("force", defaults, user_config or {}, globalConfig)
+  25 	M.config = config
 
      	-- Configure logging based on config
-  20 	local log_config = {
-  20 		enabled = config.logging.enabled,
-  20 		file_path = config.logging.file_path,
+  25 	local log_config = {
+  25 		enabled = config.logging.enabled,
+  25 		file_path = config.logging.file_path,
      	}
 
      	-- Convert string level to number
-  20 	if type(config.logging.level) == "string" then
-  20 		local level_map = {
-  20 			ERROR = logging.levels.ERROR,
-  20 			WARN = logging.levels.WARN,
-  20 			INFO = logging.levels.INFO,
-  20 			DEBUG = logging.levels.DEBUG,
+  25 	if type(config.logging.level) == "string" then
+  25 		local level_map = {
+  25 			ERROR = logging.levels.ERROR,
+  25 			WARN = logging.levels.WARN,
+  25 			INFO = logging.levels.INFO,
+  25 			DEBUG = logging.levels.DEBUG,
      		}
-  20 		log_config.level = level_map[config.logging.level] or logging.levels.INFO
+  25 		log_config.level = level_map[config.logging.level] or logging.levels.INFO
      	else
 ***0 		log_config.level = config.logging.level
      	end
 
-  20 	logging.setup(log_config)
-  20 	logging.log_config("Plugin configured with logging " .. (config.logging.enabled and "enabled" or "disabled"))
+  25 	logging.setup(log_config)
+  25 	logging.log_config("Plugin configured with logging " .. (config.logging.enabled and "enabled" or "disabled"))
 
-  20 	return config
+     	-- Setup notifications with the config
+  25 	notifications.setup(config)
+
+  25 	return config
      end
 
-  18 return M
+  23 return M
 
 ==============================================================================
 /home/runner/work/code-stats.nvim/code-stats.nvim/lua/maorun/code-stats/events.lua
@@ -391,7 +402,7 @@
 
      	-- Sort by XP descending
    6 	table.sort(languages, function(a, b)
-   5 		return a.xp > b.xp
+   6 		return a.xp > b.xp
      	end)
 
    3 	if #languages == 0 then
@@ -732,39 +743,39 @@
      -- Centralized logging system for Code::Stats plugin
      -- Supports optional file logging with configurable levels
 
-  43 local M = {}
+  59 local M = {}
 
      -- Log levels
-  43 M.levels = {
+  59 M.levels = {
      	ERROR = 1,
      	WARN = 2,
      	INFO = 3,
      	DEBUG = 4,
-  43 }
+  59 }
 
      -- Level names for output
-  43 local level_names = {
-  43 	[M.levels.ERROR] = "ERROR",
-  43 	[M.levels.WARN] = "WARN",
-  43 	[M.levels.INFO] = "INFO",
-  43 	[M.levels.DEBUG] = "DEBUG",
+  59 local level_names = {
+  59 	[M.levels.ERROR] = "ERROR",
+  59 	[M.levels.WARN] = "WARN",
+  59 	[M.levels.INFO] = "INFO",
+  59 	[M.levels.DEBUG] = "DEBUG",
      }
 
      -- Default configuration
-  43 local config = {
+  59 local config = {
      	enabled = false,
-  43 	level = M.levels.INFO,
+  59 	level = M.levels.INFO,
      	file_path = nil,
      }
 
      -- Configure logging
-  43 function M.setup(user_config)
-  28 	if user_config then
-  56 		config = vim.tbl_deep_extend("force", config, user_config)
+  59 function M.setup(user_config)
+  33 	if user_config then
+  66 		config = vim.tbl_deep_extend("force", config, user_config)
      	end
 
      	-- Set default log file path if logging is enabled but no path specified
-  28 	if config.enabled and not config.file_path then
+  33 	if config.enabled and not config.file_path then
    1 		local data_dir = vim.fn.stdpath("data")
    1 		config.file_path = data_dir .. "/code-stats.log"
      	end
@@ -777,8 +788,8 @@
 
      -- Write log entry to file
      local function write_to_file(level, message)
- 140 	if not config.enabled or not config.file_path then
- 131 		return
+ 187 	if not config.enabled or not config.file_path then
+ 178 		return
      	end
 
    9 	if level > config.level then
@@ -798,27 +809,27 @@
      end
 
      -- Log an error message
-  43 function M.error(message)
+  59 function M.error(message)
    5 	write_to_file(M.levels.ERROR, message)
      end
 
      -- Log a warning message
-  43 function M.warn(message)
+  59 function M.warn(message)
    3 	write_to_file(M.levels.WARN, message)
      end
 
      -- Log an info message
-  43 function M.info(message)
- 113 	write_to_file(M.levels.INFO, message)
+  59 function M.info(message)
+ 129 	write_to_file(M.levels.INFO, message)
      end
 
      -- Log a debug message
-  43 function M.debug(message)
-  19 	write_to_file(M.levels.DEBUG, message)
+  59 function M.debug(message)
+  50 	write_to_file(M.levels.DEBUG, message)
      end
 
      -- Log API requests
-  43 function M.log_api_request(url, method, success, error_msg)
+  59 function M.log_api_request(url, method, success, error_msg)
    4 	local status = success and "SUCCESS" or "FAILED"
    4 	local msg = string.format("API %s %s - %s", method, url, status)
    4 	if error_msg then
@@ -833,33 +844,33 @@
      end
 
      -- Log XP operations
-  43 function M.log_xp_operation(operation, language, amount, total)
-  27 	local msg = string.format("XP %s: %s +%d (total: %d)", operation, language, amount or 0, total or 0)
-  27 	M.info(msg)
+  59 function M.log_xp_operation(operation, language, amount, total)
+  35 	local msg = string.format("XP %s: %s +%d (total: %d)", operation, language, amount or 0, total or 0)
+  35 	M.info(msg)
      end
 
      -- Log configuration operations
-  43 function M.log_config(message)
-  20 	M.info("CONFIG: " .. message)
+  59 function M.log_config(message)
+  25 	M.info("CONFIG: " .. message)
      end
 
      -- Log plugin initialization
-  43 function M.log_init(message)
+  59 function M.log_init(message)
   50 	M.info("INIT: " .. message)
      end
 
      -- Get current log file path
-  43 function M.get_log_file()
+  59 function M.get_log_file()
    2 	return config.file_path
      end
 
      -- Check if logging is enabled
-  43 function M.is_enabled()
+  59 function M.is_enabled()
    3 	return config.enabled
      end
 
      -- Clear log file
-  43 function M.clear_log()
+  59 function M.clear_log()
    1 	if config.enabled and config.file_path then
    1 		local file = io.open(config.file_path, "w")
    1 		if file then
@@ -869,15 +880,56 @@
      	end
      end
 
-  43 return M
+  59 return M
+
+==============================================================================
+/home/runner/work/code-stats.nvim/code-stats.nvim/lua/maorun/code-stats/notifications.lua
+==============================================================================
+  10 local logging = require("maorun.code-stats.logging")
+
+  10 local M = {}
+
+     -- Configuration reference (will be set by setup)
+  10 local config = nil
+
+     -- Setup notifications with config reference
+     M.setup = function(notification_config)
+  31 	config = notification_config
+  31 	logging.debug("Notifications module configured")
+     end
+
+     -- Send level-up notification
+     M.level_up = function(language, new_level)
+   7 	if not config or not config.notifications.enabled or not config.notifications.level_up.enabled then
+   4 		return
+     	end
+
+   3 	local message = string.format(config.notifications.level_up.message, language, new_level)
+
+     	-- Use vim.notify if available (Neovim 0.5+), fallback to echo
+   4 	if vim.notify then
+   2 		vim.notify(message, vim.log.levels.INFO, {
+     			title = "Code::Stats",
+     			timeout = 3000,
+   2 		})
+     	else
+     		-- Fallback for older Neovim versions
+   1 		vim.api.nvim_echo({ { message, "MoreMsg" } }, true, {})
+     	end
+
+   3 	logging.info("Level-up notification sent: " .. message)
+     end
+
+  10 return M
 
 ==============================================================================
 /home/runner/work/code-stats.nvim/code-stats.nvim/lua/maorun/code-stats/pulse.lua
 ==============================================================================
-  30 local logging = require("maorun.code-stats.logging")
+  40 local logging = require("maorun.code-stats.logging")
+  40 local notifications = require("maorun.code-stats.notifications")
 
-  30 local pulse = {
-  30 	xps = {},
+  40 local pulse = {
+  40 	xps = {},
      }
 
      -- Get the path for persisting XP data
@@ -988,35 +1040,44 @@
      end
 
      pulse.addXp = function(lang, amount)
-  28 	if not lang or lang == "" then
+  36 	if not lang or lang == "" then
 ***0 		logging.warn("Attempted to add XP to empty language")
 ***0 		return
      	end
 
-  28 	if not amount or amount <= 0 then
+  36 	if not amount or amount <= 0 then
    2 		logging.warn("Attempted to add invalid XP amount: " .. tostring(amount))
    2 		return
      	end
 
-  26 	local old_xp = pulse.getXp(lang)
-  26 	pulse.xps[lang] = old_xp + amount
-  26 	logging.log_xp_operation("ADD", lang, amount, pulse.xps[lang])
+  34 	local old_xp = pulse.getXp(lang)
+  34 	local old_level = pulse.calculateLevel(old_xp)
+
+  34 	pulse.xps[lang] = old_xp + amount
+  34 	local new_level = pulse.calculateLevel(pulse.xps[lang])
+
+  34 	logging.log_xp_operation("ADD", lang, amount, pulse.xps[lang])
+
+     	-- Check for level-up and send notification
+  34 	if new_level > old_level then
+   7 		notifications.level_up(lang, new_level)
+     	end
      end
 
      pulse.getXp = function(lang)
-  49 	if pulse.xps[lang] then
-  18 		return pulse.xps[lang]
+  57 	if pulse.xps[lang] then
+  20 		return pulse.xps[lang]
      	end
-  31 	return 0
+  37 	return 0
      end
 
      -- Calculate level from XP using standard gaming formula
      -- Level = floor(sqrt(XP / 100)) + 1
      pulse.calculateLevel = function(xp)
-  10 	if not xp or xp <= 0 then
-   2 		return 1
+  78 	if not xp or xp <= 0 then
+  28 		return 1
      	end
-   8 	return math.floor(math.sqrt(xp / 100)) + 1
+  50 	return math.floor(math.sqrt(xp / 100)) + 1
      end
 
      -- Calculate XP required for a specific level
@@ -1077,7 +1138,7 @@
      	end
      end
 
-  30 return pulse
+  40 return pulse
 
 ==============================================================================
 Summary
@@ -1086,11 +1147,12 @@ Summary
 File                                                                                           Hits Missed Coverage
 -------------------------------------------------------------------------------------------------------------------
 /home/runner/work/code-stats.nvim/code-stats.nvim/lua/maorun/code-stats/api.lua                41   74     35.65%
-/home/runner/work/code-stats.nvim/code-stats.nvim/lua/maorun/code-stats/config.lua             27   2      93.10%
+/home/runner/work/code-stats.nvim/code-stats.nvim/lua/maorun/code-stats/config.lua             33   2      94.29%
 /home/runner/work/code-stats.nvim/code-stats.nvim/lua/maorun/code-stats/events.lua             14   7      66.67%
 /home/runner/work/code-stats.nvim/code-stats.nvim/lua/maorun/code-stats/init.lua               61   107    36.31%
 /home/runner/work/code-stats.nvim/code-stats.nvim/lua/maorun/code-stats/language-detection.lua 48   1      97.96%
 /home/runner/work/code-stats.nvim/code-stats.nvim/lua/maorun/code-stats/logging.lua            62   0      100.00%
-/home/runner/work/code-stats.nvim/code-stats.nvim/lua/maorun/code-stats/pulse.lua              82   24     77.36%
+/home/runner/work/code-stats.nvim/code-stats.nvim/lua/maorun/code-stats/notifications.lua      14   0      100.00%
+/home/runner/work/code-stats.nvim/code-stats.nvim/lua/maorun/code-stats/pulse.lua              87   24     78.38%
 -------------------------------------------------------------------------------------------------------------------
-Total                                                                                          335  215    60.91%
+Total                                                                                          360  215    62.61%
