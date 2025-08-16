@@ -1,15 +1,19 @@
 local curl = require("plenary.curl")
 local pulse = require("maorun.code-stats.pulse")
 local cs_config = require("maorun.code-stats.config")
+local logging = require("maorun.code-stats.logging")
 
 local error_message = ""
 local is_vim_leaving = false
 
 local function requestToApi(body)
 	local url = cs_config.config.api_url
+	local full_url = url .. "api/my/pulses/"
+
+	logging.debug("Attempting API request to " .. full_url)
 
 	return curl.request({
-		url = url .. "api/my/pulses/",
+		url = full_url,
 		method = "POST",
 		headers = {
 			["X-API-Token"] = cs_config.config.api_key,
@@ -18,20 +22,33 @@ local function requestToApi(body)
 		},
 		body = body,
 		on_error = function(data)
-			error_message = "could not send request to code-stats: " .. data.message
+			local error_details = data.message or "Unknown network error"
+			error_message = "Unable to sync with Code::Stats server: " .. error_details
+			logging.log_api_request(full_url, "POST", false, error_details)
+
 			-- If we're leaving vim and there's an error, persist the XP data
 			if is_vim_leaving then
 				pulse.save()
+				logging.warn("XP data persisted due to API error during vim exit")
 			end
 		end,
-		callback = function()
-			error_message = ""
-			pulse.reset()
+		callback = function(response)
+			if response.status >= 200 and response.status < 300 then
+				error_message = ""
+				pulse.reset()
+				logging.log_api_request(full_url, "POST", true)
+				logging.info("XP data successfully sent to Code::Stats")
+			else
+				error_message = "Code::Stats server error (HTTP " .. response.status .. ")"
+				logging.log_api_request(full_url, "POST", false, "HTTP " .. response.status)
+			end
 		end,
 	})
 end
 
 local function pulseSend()
+	logging.debug("Starting pulse send operation")
+
 	-- Check if config is initialized by checking essential string fields
 	local config_values = {
 		cs_config.config.status_prefix,
@@ -39,25 +56,22 @@ local function pulseSend()
 		cs_config.config.api_key,
 	}
 	if string.len(table.concat(config_values)) == 0 then
-		error_message = cs_config.config.status_prefix .. "Not Initialized"
-		-- Early return if not initialized, to prevent further checks if config is empty
-		if string.len(error_message) > 0 then
-			return
-		end
+		error_message = "Code::Stats plugin not properly configured"
+		logging.error("Plugin configuration incomplete - missing essential settings")
+		return
 	end
 
 	local url = cs_config.config.api_url
 	if string.len(url) == 0 then
-		error_message = "no API-URL given"
-		if string.len(error_message) > 0 then
-			return
-		end
+		error_message = "Code::Stats API URL not configured"
+		logging.error("Missing API URL configuration")
+		return
 	end
+
 	if string.len(cs_config.config.api_key) == 0 then
-		error_message = "no api-key given"
-		if string.len(error_message) > 0 then
-			return
-		end
+		error_message = "Code::Stats API key not configured"
+		logging.error("Missing API key configuration")
+		return
 	end
 
 	-- If there was an error message set by previous checks, clear it if we proceed
@@ -74,14 +88,21 @@ local function pulseSend()
 	local xps = table.concat(vim.tbl_values(languages), ",")
 
 	if string.len(xps) > 0 then
-		requestToApi('{ "coded_at": "' .. os.date("%Y-%m-%dT%X%z") .. '", "xps": [ ' .. xps .. " ] }")
+		local timestamp = os.date("%Y-%m-%dT%X%z")
+		local payload = '{ "coded_at": "' .. timestamp .. '", "xps": [ ' .. xps .. " ] }"
+		logging.info("Sending XP data: " .. xps)
+		requestToApi(payload)
 	elseif is_vim_leaving then
 		-- If we're leaving vim but have no XP to send, still clean up any persistence file
 		pulse.reset()
+		logging.info("No XP to send on vim exit, cleaning up persistence")
+	else
+		logging.debug("No XP data to send")
 	end
 end
 
 local function pulseSendOnExit()
+	logging.info("Performing final pulse send on vim exit")
 	is_vim_leaving = true
 	pulseSend()
 	is_vim_leaving = false

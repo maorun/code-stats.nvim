@@ -61,6 +61,13 @@ describe("User Commands", function()
 			return msg
 		end
 		_G.vim.log = { levels = { INFO = 1 } }
+		_G.vim.fn = _G.vim.fn or {}
+		_G.vim.fn.stdpath = function(what)
+			if what == "data" then
+				return "/tmp"
+			end
+			return "/tmp"
+		end
 
 		-- Reset modules before each test
 		package.loaded["maorun.code-stats.pulse"] = nil

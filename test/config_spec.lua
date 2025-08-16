@@ -5,6 +5,13 @@ describe("Config", function()
 		-- Mock vim environment before requiring modules
 		_G.vim = _G.vim or {}
 		_G.vim.g = {}
+		_G.vim.fn = _G.vim.fn or {}
+		_G.vim.fn.stdpath = function(what)
+			if what == "data" then
+				return "/tmp"
+			end
+			return "/tmp"
+		end
 		_G.vim.tbl_deep_extend = function(mode, ...)
 			local result = {}
 			for _, tbl in ipairs({ ... }) do
@@ -34,6 +41,7 @@ describe("Config", function()
 
 		-- Reset the config module before each test
 		package.loaded["maorun.code-stats.config"] = nil
+		package.loaded["maorun.code-stats.logging"] = nil
 		config = require("maorun.code-stats.config")
 	end)
 

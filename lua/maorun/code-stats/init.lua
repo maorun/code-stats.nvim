@@ -3,8 +3,10 @@ local cs_config = require("maorun.code-stats.config")
 local api = require("maorun.code-stats.api")
 local events = require("maorun.code-stats.events")
 local lang_detection = require("maorun.code-stats.language-detection")
+local logging = require("maorun.code-stats.logging")
 
 -- Load any persisted XP data from previous sessions
+logging.log_init("Loading persisted XP data")
 pulse.load()
 
 -- The local 'error' variable has been removed. Errors are now primarily managed in api.lua.
@@ -84,6 +86,7 @@ function M.add(filetype)
 	-- Check if filetype is in ignored list
 	for _, ignored_type in ipairs(cs_config.config.ignored_filetypes) do
 		if filetype == ignored_type then
+			logging.debug("Skipping XP for ignored filetype: " .. filetype)
 			return -- Don't add XP for ignored filetypes
 		end
 	end
@@ -108,17 +111,41 @@ events.setup_autocommands(M.add, M.pulseSend, api.pulseSendOnExit)
 -- Create user commands
 vim.api.nvim_create_user_command("CodeStatsXP", function()
 	local info = getCurrentLanguageXP()
-	vim.notify(info, vim.log.levels.INFO, { title = "Code::Stats" })
+	local error_msg = api.get_error()
+
+	if string.len(error_msg) > 0 then
+		vim.notify("Code::Stats Error: " .. error_msg, vim.log.levels.ERROR, { title = "Code::Stats" })
+		logging.error("User command CodeStatsXP failed: " .. error_msg)
+	else
+		vim.notify(info, vim.log.levels.INFO, { title = "Code::Stats" })
+		logging.debug("User command CodeStatsXP executed successfully")
+	end
 end, { desc = "Show XP for current language" })
 
 vim.api.nvim_create_user_command("CodeStatsAll", function()
 	local info = getAllLanguagesXP()
-	vim.notify(info, vim.log.levels.INFO, { title = "Code::Stats" })
+	local error_msg = api.get_error()
+
+	if string.len(error_msg) > 0 then
+		vim.notify("Code::Stats Error: " .. error_msg, vim.log.levels.ERROR, { title = "Code::Stats" })
+		logging.error("User command CodeStatsAll failed: " .. error_msg)
+	else
+		vim.notify(info, vim.log.levels.INFO, { title = "Code::Stats" })
+		logging.debug("User command CodeStatsAll executed successfully")
+	end
 end, { desc = "Show XP for all tracked languages" })
 
 vim.api.nvim_create_user_command("CodeStatsLang", function(opts)
 	local info = getLanguageXP(opts.args)
-	vim.notify(info, vim.log.levels.INFO, { title = "Code::Stats" })
+	local error_msg = api.get_error()
+
+	if string.len(error_msg) > 0 then
+		vim.notify("Code::Stats Error: " .. error_msg, vim.log.levels.ERROR, { title = "Code::Stats" })
+		logging.error("User command CodeStatsLang failed: " .. error_msg)
+	else
+		vim.notify(info, vim.log.levels.INFO, { title = "Code::Stats" })
+		logging.debug("User command CodeStatsLang executed for language: " .. (opts.args or "unknown"))
+	end
 end, {
 	nargs = 1,
 	desc = "Show XP for specific language",
@@ -134,5 +161,41 @@ end, {
 		return languages
 	end,
 })
+
+-- Add user command for managing logging
+vim.api.nvim_create_user_command("CodeStatsLog", function(opts)
+	local action = opts.args or ""
+
+	if action == "clear" then
+		logging.clear_log()
+		vim.notify("Code::Stats log file cleared", vim.log.levels.INFO, { title = "Code::Stats" })
+	elseif action == "path" then
+		local log_path = logging.get_log_file()
+		if log_path and logging.is_enabled() then
+			vim.notify("Log file: " .. log_path, vim.log.levels.INFO, { title = "Code::Stats" })
+		else
+			vim.notify("Logging is disabled", vim.log.levels.WARN, { title = "Code::Stats" })
+		end
+	elseif action == "status" then
+		local status = logging.is_enabled() and "enabled" or "disabled"
+		local log_path = logging.get_log_file() or "not set"
+		vim.notify(
+			"Logging is " .. status .. "\nLog file: " .. log_path,
+			vim.log.levels.INFO,
+			{ title = "Code::Stats" }
+		)
+	else
+		vim.notify("Usage: :CodeStatsLog [clear|path|status]", vim.log.levels.INFO, { title = "Code::Stats" })
+	end
+end, {
+	nargs = "?",
+	desc = "Manage Code::Stats logging (clear|path|status)",
+	complete = function()
+		return { "clear", "path", "status" }
+	end,
+})
+
+logging.log_init("User commands created successfully")
+logging.log_init("Code::Stats plugin initialization complete")
 
 return M
