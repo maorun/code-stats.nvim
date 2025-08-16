@@ -1,1 +1,12 @@
-
+99:/home/runner/work/code-stats.nvim/code-stats.nvim/lua/maorun/code-stats/api.lua
+1 1 1 0 1 1 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 1 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 1 0 0 0 0 0 1 0 0 0 1 0 1 1 1 1 1 1 
+23:/home/runner/work/code-stats.nvim/code-stats.nvim/lua/maorun/code-stats/config.lua
+5 0 0 0 5 0 5 0 5 10 0 0 5 7 7 0 0 14 7 7 5 0 5 
+40:/home/runner/work/code-stats.nvim/code-stats.nvim/lua/maorun/code-stats/events.lua
+1 0 0 1 0 2 1 0 0 0 0 0 0 1 0 0 2 1 0 0 0 0 0 1 0 0 2 1 0 0 0 0 0 1 0 2 0 1 1 1 
+44:/home/runner/work/code-stats.nvim/code-stats.nvim/lua/maorun/code-stats/init.lua
+1 1 1 1 1 0 0 1 0 0 0 0 0 0 0 0 0 0 0 1 0 1 0 1 0 10 8 3 0 0 2 3 0 1 1 1 0 0 1 0 0 1 0 1 
+109:/home/runner/work/code-stats.nvim/code-stats.nvim/lua/maorun/code-stats/language-detection.lua
+10 0 0 0 5 5 10 0 0 0 6 0 0 6 6 0 1 0 0 5 0 0 0 5 5 2 0 2 1 0 0 0 0 0 4 4 0 1 1 1 0 0 0 0 3 4 2 2 0 2 3 2 2 0 0 2 1 0 1 0 0 0 1 0 0 0 0 0 0 0 2 10 0 0 10 6 10 0 0 0 10 3 0 0 3 3 2 4 2 2 0 2 5 3 0 0 0 0 2 2 0 0 0 0 0 3 10 0 10 
+81:/home/runner/work/code-stats.nvim/code-stats.nvim/lua/maorun/code-stats/pulse.lua
+9 9 0 0 0 0 8 7 9 0 0 0 1 1 1 1 1 0 0 0 1 0 0 0 0 0 0 1 1 1 1 1 1 0 10 0 0 0 2 2 2 1 0 0 1 1 0 1 1 1 0 2 1 2 0 0 0 1 0 0 10 0 0 26 22 0 0 30 12 0 18 9 0 0 4 0 4 5 13 0 9 
