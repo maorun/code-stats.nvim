@@ -115,6 +115,24 @@ Manage logging functionality:
 - `:CodeStatsLog path` - Show log file path
 - `:CodeStatsLog clear` - Clear the log file
 
+### `:CodeStatsDaily [YYYY-MM-DD]`
+Show daily XP statistics for a specific date or today if no date provided:
+- Displays total XP and level for the day
+- Shows XP breakdown by programming language
+- Useful for tracking daily coding productivity
+
+### `:CodeStatsWeekly [YYYY-MM-DD]`
+Show weekly XP statistics for the week containing the specified date or current week:
+- Displays total XP and level for the week (Monday to Sunday)
+- Shows XP breakdown by programming language
+- Helps identify weekly coding patterns
+
+### `:CodeStatsMonthly [YYYY-MM]`
+Show monthly XP statistics for a specific month or current month:
+- Displays total XP and level for the month
+- Shows XP breakdown by programming language
+- Great for monthly progress reviews
+
 **Example usage:**
 ```vim
 :CodeStatsXP                " Show current language XP
@@ -123,7 +141,42 @@ Manage logging functionality:
 :CodeStatsXpSend            " Send all pending XP immediately
 :CodeStatsProfile           " Show your Code::Stats profile from server
 :CodeStatsLog status        " Show logging status
+:CodeStatsDaily             " Show today's XP statistics
+:CodeStatsDaily 2024-08-15  " Show XP for specific date
+:CodeStatsWeekly            " Show current week's XP statistics
+:CodeStatsMonthly           " Show current month's XP statistics
+:CodeStatsMonthly 2024-07   " Show XP for July 2024
 ```
+
+## Personal Statistics
+
+The plugin now includes comprehensive personal statistics tracking that allows you to view your coding activity over time. This feature automatically tracks XP with timestamps and provides insights into your daily, weekly, and monthly coding patterns.
+
+### Features
+
+- **Historical Tracking**: All XP gains are automatically recorded with timestamps for historical analysis
+- **Time-based Analytics**: View statistics by day, week, or month
+- **Language Breakdown**: See which programming languages you've been using most
+- **Level Progression**: Track level advancement over time
+- **Data Retention**: Historical data is kept for 90 days to prevent excessive storage growth
+- **Backward Compatibility**: Existing XP tracking continues to work unchanged
+
+### How It Works
+
+The statistics system works alongside the existing XP tracking:
+
+1. **Automatic Recording**: Every time you gain XP, the plugin automatically records the timestamp and language
+2. **Separate Storage**: Historical data is stored in a separate file (`code-stats-history.json`) to maintain compatibility
+3. **Aggregated Views**: Statistics commands aggregate historical data to show totals by time period
+4. **Level Calculations**: Uses the same level formula as the main XP system (`Level = floor(sqrt(XP / 100)) + 1`)
+
+### Use Cases
+
+- **Daily Reviews**: Check how productive your coding day was
+- **Weekly Planning**: Identify which days of the week you're most productive
+- **Monthly Reports**: Track progress toward coding goals
+- **Language Analysis**: Discover which languages you're spending most time on
+- **Motivation**: See your coding consistency and improvement over time
 
 ## Ignoring File Types
 
