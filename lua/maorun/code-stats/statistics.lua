@@ -2,6 +2,7 @@
 -- Provides daily, weekly, and monthly XP and level statistics
 
 local logging = require("maorun.code-stats.logging")
+local utils = require("maorun.code-stats.utils")
 
 local statistics = {}
 
@@ -51,12 +52,19 @@ end
 
 -- Save historical XP data to file
 statistics.save_history = function(history)
+	local file_path = get_history_persistence_path()
+
+	-- If no history, remove the file for consistency
 	if not history or #history == 0 then
-		logging.debug("No historical data to save")
+		local ok, err = pcall(vim.fn.delete, file_path)
+		if not ok and err and not err:match("No such file") then
+			logging.warn("Failed to delete empty history file: " .. err)
+		else
+			logging.debug("Removed empty history file")
+		end
 		return
 	end
 
-	local file_path = get_history_persistence_path()
 	local ok, data = pcall(vim.fn.json_encode, history)
 	if not ok then
 		logging.error("Failed to encode historical data for persistence: " .. data)
@@ -109,12 +117,9 @@ statistics.add_history_entry = function(language, xp_amount)
 	logging.debug("Added history entry: " .. language .. " +" .. xp_amount .. " XP")
 end
 
--- Calculate level from XP using the same formula as pulse.lua
+-- Use level calculation from utils to avoid duplication
 local function calculate_level(xp)
-	if not xp or xp <= 0 then
-		return 1
-	end
-	return math.floor(math.sqrt(xp / 100)) + 1
+	return utils.calculateLevel(xp)
 end
 
 -- Get daily statistics
