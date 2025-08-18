@@ -275,4 +275,137 @@ describe("Language Detection", function()
 		local supported = lang_detection.get_supported_languages("markdown")
 		assert.are.same({ "markdown" }, supported)
 	end)
+
+	-- Test cases for handling missing lang() method
+	it("should handle missing lang method in language_for_range", function()
+		_G.vim.bo.filetype = "html"
+
+		-- Mock language tree without lang method
+		local mock_lang_tree = {
+			some_other_method = function() end, -- No lang method
+		}
+
+		local mock_parser = {
+			language_for_range = function()
+				return mock_lang_tree
+			end,
+			tree_for_range = function()
+				return nil
+			end,
+			children = function()
+				return {}
+			end,
+		}
+
+		_G.vim.treesitter.get_parser = function()
+			return mock_parser
+		end
+
+		local result = lang_detection.detect_language()
+		assert.are.equal("html", result) -- Should fall back to base filetype
+	end)
+
+	it("should handle missing lang method in tree_for_range", function()
+		_G.vim.bo.filetype = "html"
+
+		-- Mock tree without lang method
+		local mock_tree = {
+			some_other_method = function() end, -- No lang method
+		}
+
+		local mock_parser = {
+			language_for_range = function()
+				return nil
+			end,
+			tree_for_range = function()
+				return mock_tree
+			end,
+			children = function()
+				return {}
+			end,
+		}
+
+		_G.vim.treesitter.get_parser = function()
+			return mock_parser
+		end
+
+		local result = lang_detection.detect_language()
+		assert.are.equal("html", result) -- Should fall back to base filetype
+	end)
+
+	it("should handle missing lang method in child parsers", function()
+		_G.vim.bo.filetype = "html"
+
+		-- Mock child parsers without lang method
+		local mock_child_parser = {
+			trees = function()
+				return {}
+			end,
+			some_other_method = function() end, -- No lang method
+		}
+
+		local mock_parser = {
+			language_for_range = function()
+				return nil
+			end,
+			tree_for_range = function()
+				return nil
+			end,
+			children = function()
+				return { mock_child_parser }
+			end,
+		}
+
+		_G.vim.treesitter.get_parser = function()
+			return mock_parser
+		end
+
+		local result = lang_detection.detect_language()
+		assert.are.equal("html", result) -- Should fall back to base filetype
+	end)
+
+	it("should handle nil child parsers", function()
+		_G.vim.bo.filetype = "html"
+
+		local mock_parser = {
+			language_for_range = function()
+				return nil
+			end,
+			tree_for_range = function()
+				return nil
+			end,
+			children = function()
+				return { nil, { some_method = function() end } } -- Include nil child parser
+			end,
+		}
+
+		_G.vim.treesitter.get_parser = function()
+			return mock_parser
+		end
+
+		local result = lang_detection.detect_language()
+		assert.are.equal("html", result) -- Should fall back to base filetype
+	end)
+
+	it("should handle missing lang method in get_supported_languages", function()
+		_G.vim.bo.filetype = "html"
+
+		-- Mock child parsers without lang method
+		local mock_child_parser = {
+			some_other_method = function() end, -- No lang method
+		}
+
+		local mock_parser = {
+			children = function()
+				return { mock_child_parser, nil } -- Include problematic child parsers
+			end,
+		}
+
+		_G.vim.treesitter.get_parser = function()
+			return mock_parser
+		end
+
+		local supported = lang_detection.get_supported_languages("html")
+		assert.are.same({ "html" }, supported) -- Should only return base language
+	end)
 end)
