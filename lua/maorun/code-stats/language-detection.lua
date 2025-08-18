@@ -22,7 +22,7 @@ local function detect_language_at_cursor()
 	-- Try to get the language tree at the cursor position
 	-- This will automatically handle language injection (e.g., CSS in HTML, JS in HTML, etc.)
 	local lang_tree = parser:language_for_range({ line, col, line, col })
-	if lang_tree then
+	if lang_tree and type(lang_tree.lang) == "function" then
 		local lang = lang_tree:lang()
 		-- Return the detected language if it's different from the base filetype
 		if lang and lang ~= base_filetype then
@@ -33,7 +33,7 @@ local function detect_language_at_cursor()
 	-- If language injection doesn't provide a different language, try to get the
 	-- tree at cursor position and check if it's in a different parser context
 	local tree_for_range = parser:tree_for_range({ line, col, line, col }, { include_children = true })
-	if tree_for_range then
+	if tree_for_range and type(tree_for_range.lang) == "function" then
 		-- Get the root language of this tree
 		local tree_lang = tree_for_range:lang()
 		if tree_lang and tree_lang ~= base_filetype then
@@ -44,23 +44,25 @@ local function detect_language_at_cursor()
 	-- Check if there are any child parsers (injected languages)
 	local children = parser:children()
 	for _, child_parser in pairs(children) do
-		local child_lang = child_parser:lang()
-		if child_lang then
-			-- Check if cursor is within this child parser's range
-			local child_trees = child_parser:trees()
-			for _, child_tree in ipairs(child_trees) do
-				local root = child_tree:root()
-				local start_row, start_col, end_row, end_col = root:range()
+		if child_parser and type(child_parser.lang) == "function" then
+			local child_lang = child_parser:lang()
+			if child_lang then
+				-- Check if cursor is within this child parser's range
+				local child_trees = child_parser:trees()
+				for _, child_tree in ipairs(child_trees) do
+					local root = child_tree:root()
+					local start_row, start_col, end_row, end_col = root:range()
 
-				-- Check if cursor is within this child tree's range
-				if line >= start_row and line <= end_row then
-					if line == start_row and col < start_col then
-						-- Before start
-					elseif line == end_row and col > end_col then
-						-- After end
-					else
-						-- Within range
-						return child_lang
+					-- Check if cursor is within this child tree's range
+					if line >= start_row and line <= end_row then
+						if line == start_row and col < start_col then
+							-- Before start
+						elseif line == end_row and col > end_col then
+							-- After end
+						else
+							-- Within range
+							return child_lang
+						end
 					end
 				end
 			end
@@ -86,18 +88,20 @@ function M.get_supported_languages(filetype)
 	if has_parser and parser then
 		local children = parser:children()
 		for _, child_parser in pairs(children) do
-			local child_lang = child_parser:lang()
-			if child_lang and child_lang ~= filetype then
-				-- Add to supported languages if not already present
-				local found = false
-				for _, lang in ipairs(languages) do
-					if lang == child_lang then
-						found = true
-						break
+			if child_parser and type(child_parser.lang) == "function" then
+				local child_lang = child_parser:lang()
+				if child_lang and child_lang ~= filetype then
+					-- Add to supported languages if not already present
+					local found = false
+					for _, lang in ipairs(languages) do
+						if lang == child_lang then
+							found = true
+							break
+						end
 					end
-				end
-				if not found then
-					table.insert(languages, child_lang)
+					if not found then
+						table.insert(languages, child_lang)
+					end
 				end
 			end
 		end
