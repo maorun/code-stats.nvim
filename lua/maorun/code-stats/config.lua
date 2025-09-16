@@ -17,6 +17,11 @@ local defaults = {
 		level = "INFO", -- ERROR, WARN, INFO, DEBUG
 		file_path = nil, -- Will default to vim.fn.stdpath("data") .. "/code-stats.log" if not set
 	},
+	performance = {
+		typing_debounce_ms = 500, -- Debounce time for TextChangedI events (ms)
+		xp_batch_delay_ms = 100, -- Batch delay for XP processing (ms)
+		cache_timeout_s = 1, -- Language detection cache timeout (seconds)
+	},
 }
 local config = defaults
 

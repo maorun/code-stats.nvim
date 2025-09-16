@@ -2,6 +2,9 @@ describe("Config", function()
 	local config
 
 	before_each(function()
+		-- Set test mode flag for immediate XP processing
+		_G._TEST_MODE = true
+
 		-- Mock vim environment before requiring modules
 		_G.vim = _G.vim or {}
 		_G.vim.g = {}
