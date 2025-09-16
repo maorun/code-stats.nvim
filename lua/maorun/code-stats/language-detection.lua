@@ -10,6 +10,15 @@ local language_cache = {
 	timestamp = 0,
 }
 
+-- Get cached configuration to avoid circular dependency
+local function get_cache_timeout()
+	local ok, cs_config = pcall(require, "maorun.code-stats.config")
+	if ok and cs_config.config.performance then
+		return cs_config.config.performance.cache_timeout_s
+	end
+	return 1 -- Default fallback
+end
+
 -- Get the current cursor position
 local function get_cursor_position()
 	local cursor = vim.api.nvim_win_get_cursor(0)
@@ -91,11 +100,12 @@ function M.detect_language()
 	local current_time = vim.fn.localtime()
 
 	-- Check cache validity (buffer, filetype, and position-based)
-	-- Cache is valid for 1 second and same buffer/filetype/approximate position
+	-- Cache is valid for configured timeout and same buffer/filetype/approximate position
+	local cache_timeout = get_cache_timeout()
 	if
 		language_cache.buffer == current_buffer
 		and language_cache.filetype == current_filetype
-		and language_cache.timestamp + 1 > current_time
+		and language_cache.timestamp + cache_timeout > current_time
 		and math.abs(language_cache.last_line - line) <= 5
 		and math.abs(language_cache.last_col - col) <= 10
 	then

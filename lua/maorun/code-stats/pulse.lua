@@ -1,6 +1,7 @@
 local logging = require("maorun.code-stats.logging")
 local notifications = require("maorun.code-stats.notifications")
 local utils = require("maorun.code-stats.utils")
+local cs_config = require("maorun.code-stats.config")
 
 local pulse = {
 	xps = {},
@@ -162,7 +163,8 @@ pulse.addXp = function(lang, amount)
 
 	-- Schedule batch processing if not already scheduled
 	if not pulse.batch_timer then
-		pulse.batch_timer = vim.fn.timer_start(100, function()
+		local batch_delay = cs_config.config.performance.xp_batch_delay_ms
+		pulse.batch_timer = vim.fn.timer_start(batch_delay, function()
 			process_pending_xp()
 		end)
 	end

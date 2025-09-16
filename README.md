@@ -36,6 +36,11 @@ require('maorun.code-stats').setup({
         enabled = false, -- Set to true to enable logging
         level = 'INFO', -- Log level: ERROR, WARN, INFO, DEBUG
         file_path = nil -- Optional custom log file path (defaults to vim data dir)
+    },
+    performance = {
+        typing_debounce_ms = 500, -- Debounce time for TextChangedI events (ms)
+        xp_batch_delay_ms = 100, -- Batch delay for XP processing (ms)
+        cache_timeout_s = 1, -- Language detection cache timeout (seconds)
     }
 })
 ```
@@ -225,6 +230,45 @@ require('maorun.code-stats').setup({
 ### Log File Location
 
 By default, the log file is stored at `{vim.fn.stdpath("data")}/code-stats.log`. You can specify a custom location using the `file_path` option.
+
+## Performance Optimization
+
+The plugin is optimized for minimal performance impact during typing. Key optimizations include:
+
+### Event Optimization
+- **No per-character tracking**: XP is tracked on `InsertLeave` (when exiting insert mode) and debounced `TextChangedI` events
+- **Smart debouncing**: Continuous typing only triggers XP tracking after a configurable delay (default: 500ms)
+- **Batched processing**: XP additions are batched and processed together to reduce overhead
+
+### Language Detection Caching
+- **Smart caching**: Language detection results are cached for up to 1 second (configurable)
+- **Position-aware**: Cache is invalidated when cursor moves significantly (>5 lines or >10 columns)
+- **Fast path optimization**: Files without embedded languages skip expensive TreeSitter operations
+
+### Configurable Performance Settings
+
+You can fine-tune the performance behavior:
+
+```lua
+require('maorun.code-stats').setup({
+    api_key = '<YOUR_API_KEY>',
+    performance = {
+        typing_debounce_ms = 500, -- How long to wait after typing stops before tracking XP
+        xp_batch_delay_ms = 100,  -- How long to batch XP additions before processing
+        cache_timeout_s = 1,      -- How long to cache language detection results
+    }
+})
+```
+
+### Performance Settings Explained
+- **`typing_debounce_ms`**: Controls the delay for `TextChangedI` events. Lower values = more responsive XP tracking but higher CPU usage. Higher values = less responsive but better performance.
+- **`xp_batch_delay_ms`**: Controls how long XP additions are batched before processing (level calculations, notifications). Lower values = more responsive notifications but higher overhead.
+- **`cache_timeout_s`**: Controls how long language detection results are cached. Lower values = more accurate language detection for rapidly changing contexts but higher CPU usage.
+
+**Recommended values:**
+- **Fast systems**: `typing_debounce_ms = 300, xp_batch_delay_ms = 50, cache_timeout_s = 1`
+- **Default (balanced)**: `typing_debounce_ms = 500, xp_batch_delay_ms = 100, cache_timeout_s = 1`
+- **Slower systems**: `typing_debounce_ms = 1000, xp_batch_delay_ms = 200, cache_timeout_s = 2`
 
 ### Managing Logs
 
