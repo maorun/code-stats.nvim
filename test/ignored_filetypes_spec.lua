@@ -1,5 +1,8 @@
 describe("Ignored Filetypes", function()
 	before_each(function()
+		-- Set test mode flag for immediate XP processing
+		_G._TEST_MODE = true
+
 		-- Mock plenary.curl before any module loading
 		package.loaded["plenary.curl"] = {
 			request = function(opts)

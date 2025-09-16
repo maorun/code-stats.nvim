@@ -1,6 +1,17 @@
 local lang_detection = require("maorun.code-stats.language-detection")
 local logging = require("maorun.code-stats.logging")
-local cs_config = require("maorun.code-stats.config")
+
+-- Lazy load config to avoid circular dependencies
+local function get_config()
+	local ok, cs_config = pcall(require, "maorun.code-stats.config")
+	if ok and cs_config.config.performance then
+		return cs_config.config.performance
+	end
+	-- Default fallback for tests and when config isn't available
+	return {
+		typing_debounce_ms = 500,
+	}
+end
 
 local function setup_autocommands(add_xp_callback, pulse_send_callback, pulse_send_on_exit_callback)
 	logging.log_init("Setting up autocommands for XP tracking")
@@ -26,17 +37,29 @@ local function setup_autocommands(add_xp_callback, pulse_send_callback, pulse_se
 		pattern = "*",
 		callback = function()
 			-- Debounce: only track XP after configured delay of no typing
-			if typing_timer then
+			if typing_timer and vim.fn and vim.fn.timer_stop then
 				vim.fn.timer_stop(typing_timer)
 			end
-			local debounce_ms = cs_config.config.performance.typing_debounce_ms
-			typing_timer = vim.fn.timer_start(debounce_ms, function()
+
+			local perf_config = get_config()
+			local debounce_ms = perf_config.typing_debounce_ms
+
+			-- Handle test environment where vim.fn.timer_start might not be available
+			if vim.fn and vim.fn.timer_start then
+				typing_timer = vim.fn.timer_start(debounce_ms, function()
+					if add_xp_callback then
+						local detected_lang = lang_detection.detect_language()
+						add_xp_callback(detected_lang)
+					end
+					typing_timer = nil
+				end)
+			else
+				-- Immediate processing for test environment
 				if add_xp_callback then
 					local detected_lang = lang_detection.detect_language()
 					add_xp_callback(detected_lang)
 				end
-				typing_timer = nil
-			end)
+			end
 		end,
 	})
 

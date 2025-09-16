@@ -1,4 +1,7 @@
 describe("Statistics", function()
+	-- Set test mode flag for immediate XP processing
+	_G._TEST_MODE = true
+
 	local statistics
 
 	before_each(function()

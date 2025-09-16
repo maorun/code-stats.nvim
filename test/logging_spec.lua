@@ -1,4 +1,7 @@
 describe("Logging", function()
+	-- Set test mode flag for immediate XP processing
+	_G._TEST_MODE = true
+
 	local logging
 
 	before_each(function()

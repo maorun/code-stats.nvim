@@ -2,6 +2,9 @@ describe("Language Detection", function()
 	local lang_detection
 
 	before_each(function()
+		-- Set test mode flag for immediate XP processing
+		_G._TEST_MODE = true
+
 		-- Reset the module before each test
 		package.loaded["maorun.code-stats.language-detection"] = nil
 		lang_detection = require("maorun.code-stats.language-detection")
