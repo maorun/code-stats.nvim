@@ -4,6 +4,9 @@ local utils = require("maorun.code-stats.utils")
 
 local pulse = {
 	xps = {},
+	-- Batch processing for performance
+	pending_xp = {},
+	batch_timer = nil,
 }
 
 -- Get the path for persisting XP data
@@ -113,6 +116,36 @@ pulse.load = function()
 	end
 end
 
+-- Process batched XP additions for better performance
+local function process_pending_xp()
+	for lang, amount in pairs(pulse.pending_xp) do
+		if amount > 0 then
+			local old_xp = pulse.getXp(lang)
+			local old_level = pulse.calculateLevel(old_xp)
+
+			pulse.xps[lang] = old_xp + amount
+			local new_level = pulse.calculateLevel(pulse.xps[lang])
+
+			logging.log_xp_operation("ADD_BATCH", lang, amount, pulse.xps[lang])
+
+			-- Add to historical tracking for statistics (lazy load to avoid circular dependency)
+			local ok, statistics = pcall(require, "maorun.code-stats.statistics")
+			if ok then
+				statistics.add_history_entry(lang, amount)
+			end
+
+			-- Check for level-up and send notification
+			if new_level > old_level then
+				notifications.level_up(lang, new_level)
+			end
+		end
+	end
+
+	-- Clear pending XP after processing
+	pulse.pending_xp = {}
+	pulse.batch_timer = nil
+end
+
 pulse.addXp = function(lang, amount)
 	if not lang or lang == "" then
 		logging.warn("Attempted to add XP to empty language")
@@ -124,23 +157,14 @@ pulse.addXp = function(lang, amount)
 		return
 	end
 
-	local old_xp = pulse.getXp(lang)
-	local old_level = pulse.calculateLevel(old_xp)
+	-- Add to pending XP for batch processing
+	pulse.pending_xp[lang] = (pulse.pending_xp[lang] or 0) + amount
 
-	pulse.xps[lang] = old_xp + amount
-	local new_level = pulse.calculateLevel(pulse.xps[lang])
-
-	logging.log_xp_operation("ADD", lang, amount, pulse.xps[lang])
-
-	-- Add to historical tracking for statistics (lazy load to avoid circular dependency)
-	local ok, statistics = pcall(require, "maorun.code-stats.statistics")
-	if ok then
-		statistics.add_history_entry(lang, amount)
-	end
-
-	-- Check for level-up and send notification
-	if new_level > old_level then
-		notifications.level_up(lang, new_level)
+	-- Schedule batch processing if not already scheduled
+	if not pulse.batch_timer then
+		pulse.batch_timer = vim.fn.timer_start(100, function()
+			process_pending_xp()
+		end)
 	end
 end
 

@@ -5,7 +5,9 @@ local function setup_autocommands(add_xp_callback, pulse_send_callback, pulse_se
 	logging.log_init("Setting up autocommands for XP tracking")
 	local group = vim.api.nvim_create_augroup("codestats_track", { clear = true })
 
-	vim.api.nvim_create_autocmd({ "InsertCharPre", "TextChanged" }, {
+	-- Use less frequent events to avoid performance issues with character input
+	-- Track XP on significant events rather than every character
+	vim.api.nvim_create_autocmd({ "InsertLeave", "TextChanged" }, {
 		group = group,
 		pattern = "*",
 		callback = function()
@@ -13,6 +15,26 @@ local function setup_autocommands(add_xp_callback, pulse_send_callback, pulse_se
 				local detected_lang = lang_detection.detect_language()
 				add_xp_callback(detected_lang)
 			end
+		end,
+	})
+
+	-- Additional tracking for continuous typing sessions with debouncing
+	local typing_timer = nil
+	vim.api.nvim_create_autocmd("TextChangedI", {
+		group = group,
+		pattern = "*",
+		callback = function()
+			-- Debounce: only track XP after 500ms of no typing
+			if typing_timer then
+				vim.fn.timer_stop(typing_timer)
+			end
+			typing_timer = vim.fn.timer_start(500, function()
+				if add_xp_callback then
+					local detected_lang = lang_detection.detect_language()
+					add_xp_callback(detected_lang)
+				end
+				typing_timer = nil
+			end)
 		end,
 	})
 
