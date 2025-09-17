@@ -17,12 +17,38 @@ local function setup_autocommands(add_xp_callback, pulse_send_callback, pulse_se
 	logging.log_init("Setting up autocommands for XP tracking")
 	local group = vim.api.nvim_create_augroup("codestats_track", { clear = true })
 
+	-- Track accumulated characters during typing sessions
+	local typing_session = {
+		accumulated_chars = 0,
+		timer = nil,
+		current_lang = nil,
+	}
+
 	-- Use less frequent events to avoid performance issues with character input
 	-- Track XP on significant events rather than every character
 	vim.api.nvim_create_autocmd({ "InsertLeave", "TextChanged" }, {
 		group = group,
 		pattern = "*",
 		callback = function()
+			-- Process any accumulated characters from typing session
+			if typing_session.accumulated_chars > 0 and typing_session.current_lang and add_xp_callback then
+				logging.debug(
+					string.format(
+						"InsertLeave/TextChanged: processing %d accumulated characters for %s",
+						typing_session.accumulated_chars,
+						typing_session.current_lang
+					)
+				)
+				-- Add all accumulated XP
+				for i = 1, typing_session.accumulated_chars do
+					add_xp_callback(typing_session.current_lang)
+				end
+				-- Reset session
+				typing_session.accumulated_chars = 0
+				typing_session.current_lang = nil
+			end
+
+			-- Also process current event as usual
 			if add_xp_callback then
 				local detected_lang = lang_detection.detect_language()
 				add_xp_callback(detected_lang)
@@ -31,14 +57,19 @@ local function setup_autocommands(add_xp_callback, pulse_send_callback, pulse_se
 	})
 
 	-- Additional tracking for continuous typing sessions with configurable debouncing
-	local typing_timer = nil
 	vim.api.nvim_create_autocmd("TextChangedI", {
 		group = group,
 		pattern = "*",
 		callback = function()
-			-- Debounce: only track XP after configured delay of no typing
-			if typing_timer and vim.fn and vim.fn.timer_stop then
-				vim.fn.timer_stop(typing_timer)
+			local detected_lang = lang_detection.detect_language()
+
+			-- Accumulate character count for this typing session
+			typing_session.accumulated_chars = typing_session.accumulated_chars + 1
+			typing_session.current_lang = detected_lang
+
+			-- Stop existing timer if it exists
+			if typing_session.timer and vim.fn and vim.fn.timer_stop then
+				vim.fn.timer_stop(typing_session.timer)
 			end
 
 			local perf_config = get_config()
@@ -46,19 +77,34 @@ local function setup_autocommands(add_xp_callback, pulse_send_callback, pulse_se
 
 			-- Handle test environment where vim.fn.timer_start might not be available
 			if vim.fn and vim.fn.timer_start then
-				typing_timer = vim.fn.timer_start(debounce_ms, function()
-					if add_xp_callback then
-						local detected_lang = lang_detection.detect_language()
-						add_xp_callback(detected_lang)
+				typing_session.timer = vim.fn.timer_start(debounce_ms, function()
+					-- Process accumulated characters when typing pauses
+					if typing_session.accumulated_chars > 0 and typing_session.current_lang and add_xp_callback then
+						logging.debug(
+							string.format(
+								"Debounce timer: processing %d accumulated characters for %s",
+								typing_session.accumulated_chars,
+								typing_session.current_lang
+							)
+						)
+						-- Add all accumulated XP
+						for i = 1, typing_session.accumulated_chars do
+							add_xp_callback(typing_session.current_lang)
+						end
+						-- Reset session
+						typing_session.accumulated_chars = 0
+						typing_session.current_lang = nil
 					end
-					typing_timer = nil
+					typing_session.timer = nil
 				end)
 			else
 				-- Immediate processing for test environment
 				if add_xp_callback then
-					local detected_lang = lang_detection.detect_language()
 					add_xp_callback(detected_lang)
 				end
+				-- Reset accumulation for test environment
+				typing_session.accumulated_chars = 0
+				typing_session.current_lang = nil
 			end
 		end,
 	})
