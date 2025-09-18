@@ -75,7 +75,7 @@ local function setup_autocommands(add_xp_callback, pulse_send_callback, pulse_se
 
 			-- Check for test environment - use _G._TEST_MODE or absence of timer functions
 			local is_test_env = _G._TEST_MODE or (vim.fn and not vim.fn.timer_start)
-			
+
 			if not is_test_env and vim.fn and vim.fn.timer_start then
 				typing_session.timer = vim.fn.timer_start(debounce_ms, function()
 					-- Process accumulated characters when typing pauses

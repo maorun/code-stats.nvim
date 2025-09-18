@@ -91,7 +91,7 @@ describe("Fast Typing Character Tracking", function()
 
 	it("should handle language switching during typing session", function()
 		local add_xp_callback = function(lang, amount)
-			amount = amount or 1  -- Default to 1 for backward compatibility
+			amount = amount or 1 -- Default to 1 for backward compatibility
 			pulse.addXp(lang, amount)
 		end
 
@@ -118,7 +118,7 @@ describe("Fast Typing Character Tracking", function()
 		local total_xp_added = 0
 
 		local add_xp_callback = function(lang, amount)
-			amount = amount or 1  -- Default to 1 for backward compatibility
+			amount = amount or 1 -- Default to 1 for backward compatibility
 			pulse.addXp(lang, amount)
 			total_xp_added = total_xp_added + amount
 		end
