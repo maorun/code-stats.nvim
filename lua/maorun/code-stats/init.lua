@@ -116,7 +116,10 @@ end
 
 local M = {}
 
-function M.add(filetype)
+function M.add(filetype, amount)
+	-- Default to 1 XP if amount not specified (backward compatibility)
+	amount = amount or 1
+	
 	-- Check if filetype is in ignored list
 	for _, ignored_type in ipairs(cs_config.config.ignored_filetypes) do
 		if filetype == ignored_type then
@@ -124,7 +127,7 @@ function M.add(filetype)
 			return -- Don't add XP for ignored filetypes
 		end
 	end
-	pulse.addXp(filetype, 1)
+	pulse.addXp(filetype, amount)
 end
 
 M.setup = cs_config.setup

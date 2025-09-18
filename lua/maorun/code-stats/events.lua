@@ -39,19 +39,17 @@ local function setup_autocommands(add_xp_callback, pulse_send_callback, pulse_se
 						typing_session.current_lang
 					)
 				)
-				-- Add all accumulated XP
-				for i = 1, typing_session.accumulated_chars do
-					add_xp_callback(typing_session.current_lang)
-				end
+				-- Add all accumulated XP in a single call
+				add_xp_callback(typing_session.current_lang, typing_session.accumulated_chars)
 				-- Reset session
 				typing_session.accumulated_chars = 0
 				typing_session.current_lang = nil
 			end
 
-			-- Also process current event as usual
+			-- Also process current event as usual (single character)
 			if add_xp_callback then
 				local detected_lang = lang_detection.detect_language()
-				add_xp_callback(detected_lang)
+				add_xp_callback(detected_lang, 1)
 			end
 		end,
 	})
@@ -75,8 +73,10 @@ local function setup_autocommands(add_xp_callback, pulse_send_callback, pulse_se
 			local perf_config = get_config()
 			local debounce_ms = perf_config.typing_debounce_ms
 
-			-- Handle test environment where vim.fn.timer_start might not be available
-			if vim.fn and vim.fn.timer_start then
+			-- Check for test environment - use _G._TEST_MODE or absence of timer functions
+			local is_test_env = _G._TEST_MODE or (vim.fn and not vim.fn.timer_start)
+			
+			if not is_test_env and vim.fn and vim.fn.timer_start then
 				typing_session.timer = vim.fn.timer_start(debounce_ms, function()
 					-- Process accumulated characters when typing pauses
 					if typing_session.accumulated_chars > 0 and typing_session.current_lang and add_xp_callback then
@@ -87,10 +87,8 @@ local function setup_autocommands(add_xp_callback, pulse_send_callback, pulse_se
 								typing_session.current_lang
 							)
 						)
-						-- Add all accumulated XP
-						for i = 1, typing_session.accumulated_chars do
-							add_xp_callback(typing_session.current_lang)
-						end
+						-- Add all accumulated XP in a single call
+						add_xp_callback(typing_session.current_lang, typing_session.accumulated_chars)
 						-- Reset session
 						typing_session.accumulated_chars = 0
 						typing_session.current_lang = nil
@@ -100,11 +98,13 @@ local function setup_autocommands(add_xp_callback, pulse_send_callback, pulse_se
 			else
 				-- Immediate processing for test environment
 				if add_xp_callback then
-					add_xp_callback(detected_lang)
+					add_xp_callback(detected_lang, 1)
 				end
-				-- Reset accumulation for test environment
-				typing_session.accumulated_chars = 0
-				typing_session.current_lang = nil
+				-- In test mode, don't accumulate - process immediately
+				if is_test_env then
+					typing_session.accumulated_chars = 0
+					typing_session.current_lang = nil
+				end
 			end
 		end,
 	})

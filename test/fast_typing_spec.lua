@@ -90,21 +90,22 @@ describe("Fast Typing Character Tracking", function()
 	end)
 
 	it("should handle language switching during typing session", function()
-		local add_xp_callback = function(lang)
-			pulse.addXp(lang, 1)
+		local add_xp_callback = function(lang, amount)
+			amount = amount or 1  -- Default to 1 for backward compatibility
+			pulse.addXp(lang, amount)
 		end
 
 		-- Setup autocommands
 		events.setup_autocommands(add_xp_callback, nil, nil)
 
 		-- Simulate typing in lua
-		add_xp_callback("lua")
-		add_xp_callback("lua")
-		add_xp_callback("lua")
+		add_xp_callback("lua", 1)
+		add_xp_callback("lua", 1)
+		add_xp_callback("lua", 1)
 
 		-- Simulate switching to javascript (e.g., in a different buffer)
-		add_xp_callback("javascript")
-		add_xp_callback("javascript")
+		add_xp_callback("javascript", 1)
+		add_xp_callback("javascript", 1)
 
 		-- Verify XP was tracked correctly for both languages
 		assert.are.equal(3, pulse.getXp("lua"))
@@ -116,9 +117,10 @@ describe("Fast Typing Character Tracking", function()
 		local total_chars_typed = 0
 		local total_xp_added = 0
 
-		local add_xp_callback = function(lang)
-			pulse.addXp(lang, 1)
-			total_xp_added = total_xp_added + 1
+		local add_xp_callback = function(lang, amount)
+			amount = amount or 1  -- Default to 1 for backward compatibility
+			pulse.addXp(lang, amount)
+			total_xp_added = total_xp_added + amount
 		end
 
 		-- Setup autocommands
@@ -127,7 +129,7 @@ describe("Fast Typing Character Tracking", function()
 		-- Simulate a typing session with multiple rapid characters
 		local chars_in_session = 10
 		for i = 1, chars_in_session do
-			add_xp_callback("lua") -- Each character typed
+			add_xp_callback("lua", 1) -- Each character typed
 			total_chars_typed = total_chars_typed + 1
 		end
 
