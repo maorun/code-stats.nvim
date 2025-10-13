@@ -1,4 +1,4 @@
-*code-stats.nvim.txt*      For NVIM v0.8.0      Last change: 2025 September 29
+*code-stats.nvim.txt*       For NVIM v0.8.0       Last change: 2025 October 13
 
 ==============================================================================
 Table of Contents                          *code-stats.nvim-table-of-contents*
