@@ -16,7 +16,7 @@ jobs:
           version: latest
           args: .
       - name: Auto Commit
-        uses: stefanzweifel/git-auto-commit-action@v6
+        uses: stefanzweifel/git-auto-commit-action@v7
         with:
           commit_message: 'style: auto format Lua code'
 
@@ -91,7 +91,7 @@ jobs:
         with:
           vimdoc: code-stats.nvim
           treesitter: true
-      - uses: stefanzweifel/git-auto-commit-action@v6
+      - uses: stefanzweifel/git-auto-commit-action@v7
         with:
           commit_message: 'chore(doc): auto generate docs'
 
@@ -183,7 +183,7 @@ jobs:
           fi
 
       - name: Commit coverage report
-        uses: stefanzweifel/git-auto-commit-action@v6
+        uses: stefanzweifel/git-auto-commit-action@v7
         with:
           commit_message: 'chore(ci): update coverage report [skip ci]'
           file_pattern: luacov.report.out luacov.stats.out
